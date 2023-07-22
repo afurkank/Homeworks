@@ -1,0 +1,291 @@
+\documentclass[10pt,a4paper, margin=1in]{article}
+\usepackage{fullpage}
+\usepackage{amsfonts, amsmath, pifont}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{mathtools}
+\usepackage{listings}
+\usepackage{tkz-euclide}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.13}
+\usepackage{pdfpages}
+\usepackage{geometry}
+ \geometry{
+ a4paper,
+ total={210mm,297mm},
+ left=10mm,
+ right=10mm,
+ top=10mm,
+ bottom=10mm,
+ }
+ % Write both of your names here. Fill exxxxxxx with your ceng mail address.
+ \author{
+  Karacık, Ahmet Furkan\\
+  \texttt{e2310209@ceng.metu.edu.tr}
+  \and
+  LastName2, FirstName2\\
+  \texttt{exxxxxxx@ceng.metu.edu.tr}
+}
+
+\title{CENG 384 - Signals and Systems for Computer Engineers \\
+Spring 2023 \\
+Homework 4}
+\begin{document}
+\maketitle
+
+
+
+\noindent\rule{19cm}{1.2pt}
+
+\begin{enumerate}
+
+\item %write the solution of q1
+	\begin{enumerate}
+    % Write your solutions in the following items.
+    \item %write the solution of q1a
+
+\[H(jw) = \frac{jw-1}{jw+1}\]
+
+\[H(jw) = \frac{Y(jw)}{X(jw)} = \frac{jw-1}{jw+1}\]
+\[\Rightarrow jwY(jw) + Y(jw) = jwX(jw) - X(jw)\]
+\[\Rightarrow \frac{dy(t)}{dt} + y(t) = \frac{dx(t)}{dt} - x(t)\]
+
+\item
+\[h(t) \xleftrightarrow{FT} H(jw)\]
+\[\frac{jw-1}{jw+1} = \frac{jw}{1 + jw} - \frac{1}{1 + jw} \xleftrightarrow{FT} \frac{d(e^{-t}u(t)}{dt} - e^{-t}u(t)\]
+\[= 2e^{-t}u(t)\] where \(t > 0\)
+    \item %write the solution of q1c
+\[y = y_h + y_p\]
+\[y_h = Ae^{st} \Rightarrow Ase^{st} + Ae^{st} = 0 \Rightarrow Ae^{st}(s+1) = 0 \Rightarrow s = -1\]
+\[\Rightarrow y_{h}(t) = Ae^{-t}\]
+\[y_p = Kx(t) = Ke^{-2t}u(t) \Rightarrow -2Ke^{-2t} + Ke^{-2t} = -2e^{-2t} + e^{-2t}\]
+\[\Rightarrow -Ke^{-2t} = -e^{-2t} \Rightarrow K = 1\]
+\[\Rightarrow y_{p}(t) = x(t)\]
+\[y(t) = Ae^{-t} + e^{-2t}\]
+\[y(0) = 0 \Rightarrow A + 1 = 0 \Rightarrow A = -1\]
+\[\Rightarrow y(t) = (e^{-2t} - e^{-t})u(t)\]
+	\item\\ %write the solution of q1d
+$ $
+
+\begin{center}
+	\tikzset{%
+		block/.style    = {draw, thick, rectangle, minimum height = 3em,
+			minimum width = 3em},
+		sum/.style      = {draw, circle, node distance = 2cm}, % Adder
+		input/.style    = {coordinate}, % Input
+		output/.style   = {coordinate} % Output
+	}
+	% Defining string as labels of certain blocks.
+	\newcommand{\suma}{\Large$+$}
+	\newcommand{\inte}{$\displaystyle \int$}
+	\newcommand{\derv}{\huge$\frac{d}{dt}$}
+
+	\begin{tikzpicture}[auto, thick, node distance=2cm, >=triangle 45]
+	\draw
+	node at (0, 0) [input] (inp) {\Large \textopenbullet}
+	node [output, right of=inp] (temp1) {}
+	node [output, right of=temp1] (t1) {}
+	node [output, right of=t1] (t2) {}
+	node [output, below of=temp1] (temp2) {}
+	node [sum, right of=temp2] (sum1) {\suma}
+	node [block, right of=sum1] (int) {\inte}
+	node [output, below of=sum1] (temp3) {}
+	node [output, right of=temp3] (s1) {}
+	node [output, right of=s1] (s2) {}
+	node [output, right of=s2] (temp4) {}
+	node [sum, right of=t2] (sum2) {\suma}
+	node [output, below of=sum2] (temp5) {}
+	node [output, right of=sum2] (out) {}
+	node [output, right of=out] (out2) {\Large \textopenbullet}
+	;
+	\draw[-](inp) -- node{$x(t)$} (temp1);
+	\draw[->](temp1) -- node{} (sum2);
+	\draw[-](sum2) -- node{} (out);
+	\draw[-](out) -- node{} (temp4);
+	\draw[-](temp4) -- node{$-1$} (temp3);
+	\draw[-](temp4) -- node{} (out);
+	\draw[->](temp3) -- node{} (sum1);
+	\draw[-](temp1) -- node{$-1$} (temp2);
+	\draw[->](temp2) -- node{} (sum1);
+	\draw[->](sum1) -- node{} (int);
+	\draw[-](int) -- node{} (temp5);
+	\draw[->](temp5) -- node{} (sum2);
+	\draw[->](out) -- node{$y(t)$} (out2);
+	\end{tikzpicture}
+\end{center}
+    \end{enumerate}
+
+\item %write the solution of q2
+	\begin{enumerate}
+    % Write your solutions in the following items.
+    \item %write the solution of q2a
+\[y[n] = \xleftrightarrow{FT} Y(e^{jw}) \Rightarrow y[n+1] = e^{jw}Y(e^{jw}) \]
+\[ x[n] = \xleftrightarrow{FT} X(e^{jw}) \Rightarrow x[n+1] = e^{jw}X(e^{jw}) \]
+\[ \Rightarrow e^{jw}Y(e^{jw}) - \frac{1}{2}Y(e^{jw}) = e^{jw}X(e^{jw}) \]
+\[ \Rightarrow Y(e^{jw})(e^{jw} - \frac{1}{2}) = e^{jw}X(e^{jw}) \]
+\[ H(e^{jw}) = \frac{Y(e^{jw})}{X(e^{jw})} = \frac{2e^{jw}}{2e^{jw}-1} = \frac{1}{1-\frac{1}{2}e^{-jw}} \]
+Divided all terms with \( 2e^{jw} \).
+
+    \item %write the solution of q2b
+From the table 5.2, we see that the inverse transform of  \( H(e^{jw}) \) gives us:
+\[ h[n] = (\frac{1}{2})^{n}u[n] \]
+	\item %write the solution of q2c
+\[ y[n] = x[n] \ast h[n] = \sum_{k=-\infty}^{\infty}x[k]h[n-k] = \sum_{k=-\infty}^{\infty}(\frac{3}{4})^{k}u[k](\frac{1}{2})^{n-k}u[n-k] \]
+\[ = \sum_{k=0}^{n}(\frac{3}{2})^{k}(\frac{1}{2})^{k}(\frac{1}{2})^{n}2^{k} \]
+\[ \sum_{k=0}^{n}(\frac{3}{2})^{k}(\frac{1}{2})^{n} = (\frac{1}{2})^{n}\sum_{k=0}^{n}(\frac{3}{4})^{k} \]
+\[ = (\frac{1}{2})^{n}\frac{1-(\frac{3}{4})^{n+1}}{1 - \frac{3}{4}} \]
+\[ = (\frac{1}{2})^{n}(4 - \frac{3^{n+1}}{4^n}) \]
+
+    \end{enumerate}
+
+\item %write the solution of q3
+	\begin{enumerate}
+    % Write your solutions in the following items.
+    \item %write the solution of q3a
+Let \(G(jw) = X(jw)H_{1}(jw)  \) and \( Y(jw) = G(jw)H_{2}(jw) \)
+Then,
+\[Y(jw) = X(jw)H_{1}(jw)H_{2}(jw) = X(jw)\frac{1}{jw+1}\frac{1}{jw+2} \]
+\[ \Rightarrow Y(jw)(jw+1)(jw+2) = X(jw) \]
+\[ \Rightarrow (jw)^{2}Y(jw) + 3jwY(jw) + 2Y(jw) = X(jw) \]
+\[\Rightarrow y^{\prime\prime}(t) + 3y^{\prime}(t) + 2y(t) = x(t)  \]
+
+    \item %write the solution of q3b
+From \( Y(jw) = X(jw)H_{1}(jw)H_{2}(jw) \)  we see that if   \( Y(jw) = H(jw)X(jw) \)
+Then,
+\[ H(jw) = H_{1}(jw)H_{2}(jw) \]
+Let \(x(t) \xleftrightarrow{FT} H_{1}(jw) = \frac{1}{jw+1} \)  and   \( y(t) \xleftrightarrow{FT} H_{2}(jw) = \frac{1}{jw+2} \)
+Then,
+\[ x(t) = e^{-t}u(t) \]
+\[ y(t) = e^{-2t}u(t) \]
+We also see that
+\[ (x \ast y)(t) \xleftrightarrow{FT} H_{1}(jw)H_{2}(jw) = H(jw) \]
+It is clear that if we find \(H(jw)\) we can find \(h(t)\) using Inverse Fourier Transform. To obtain \(H(jw)\) we can use the convolution of input and output signals.
+
+\[ (x \ast y)(t) = \int_{-\infty}^{\infty}x(\tau)y(t-\tau)d\tau \]
+\[ = \int_{-\infty}^{\infty}e^{-\tau}u(\tau)e^{-2(t - \tau)}u(t-\tau)d\tau \]
+\[ = e^{-2t}\int_{0}^{t}e^{-\tau}e^{2\tau}d\tau  = \left. e^{-2t}(e^{\tau}) \right|^{t}_{0}   \]
+\[\Rightarrow h(t) = (e^{-t} - e^{-2t})u(t) \]
+
+	\item %write the solution of q3c
+\[ Y(jw) = X(jw)H(jw) = jwH(jw) \]
+\[y(t) \xleftrightarrow{FT} Y(jw) \]
+\[ \frac{dh(t)}{dt} \xleftrightarrow{FT} jwH(jw) \]
+\[\Rightarrow y(t) = \frac{dh(t)}{dt} = (-e^{-t} + 2e^{-2t})u(t) \]
+
+    \end{enumerate}
+
+\item %write the solution of q4
+    \begin{enumerate}
+    % Write your solutions in the following items.
+    \item %write the solution of q4a
+\[Y(e^{jw}) = X(e^{jw})(H_{1}(e^{jw}) + H_{2}(e^{jw}))   \]
+\[ = X(e^{jw})(\frac{3}{3 + e^{-jw}} + \frac{2}{2 + e^{-jw}})  \]
+\[ = X(e^{jw})(\frac{ 12 + 5e^{-jw} }{ 6 + 5e^{-jw} + e^{-2jw} })  \]
+\[ \Rightarrow e^{-2jw}Y(e^{jw}) + 5e^{-jw}Y(e^{jw}) + 6Y(e^{jw}) = 5e^{-jw}X(e^{jw}) + 12X(e^{jw})  \]
+\[ \Rightarrow y[n-2] + 5y[n-1] + 6y[n] = 5x[n-1] + 12x[n]  \]
+    \item %write the solution of q4b
+\[ H(e^{jw}) = \frac{ Y(e^{jw}) }{ X(e^{jw}) } = \frac{ 12 + 5e^{-jw} }{ 6 + 5e^{-jw} + e^{-2jw} }  \]
+
+	\item %write the solution of q4c
+\[ h[n] \xleftrightarrow{FT} H(e^{jw}) = \frac{3}{3+e^{-jw}} + \frac{2}{ 2+e^{-jw} } = \frac{1}{ 1 + \frac{1}{3}e^{-jw} } + \frac{1}{ 1 + \frac{1}{2}e^{-jw} }  \]
+
+    \end{enumerate}
+\[ \Rightarrow h[n] = (-\frac{1}{3})^{n}u[n] + (-\frac{1}{2})^{n}u[n]  \]
+\item %write the solution of q5
+
+    Frequency domain magnitude plot of encoded message:
+
+    \includegraphics[scale=0.7]{freq_encoded.png}\\
+
+    Frequency domain magnitude plot of decoded message:
+
+    \includegraphics[scale=0.7]{freq_decoded.png}\\
+
+    Time domain magnitude plot of encoded message:
+
+    \includegraphics[scale=0.7]{time_encoded.png}\\
+
+    Time domain magnitude plot of decoded message:
+
+    \includegraphics[scale=0.7]{time_decoded.png}\\
+
+    Code:\\
+
+    \begin{lstlisting}[language=Python]
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy.io import wavfile
+    import scipy.io
+
+    # fast fourier transformation function
+    def fft(x):
+        x = np.asarray(x, dtype=float)
+        N = x.shape[0]
+        n = np.arange(N)
+        k = n.reshape((N,1))
+        M = np.exp(-2j * np.pi * k * n / N)
+        return np.dot(M, x)
+
+    # inverse fast fourier transformation function
+    def ifft(X):
+        X = np.asarray(X, dtype=complex)
+        N = X.shape[0]
+        n = np.arange(N)
+        k = n.reshape((N,1))
+        M = np.exp(2j * np.pi * k * n / N)
+        return np.dot(M, X) / N
+
+    # get data
+    path = r"/content/encoded.wav"
+    samplerate, data = wavfile.read(path)
+    length = data.shape[0] / samplerate
+
+    # obtain fourier domain representation of the signal
+    fourier_domain_signal = fft(data)
+
+    # apply decoding recipe step 2
+    X_prime_1 = fourier_domain_signal[:len(fourier_domain_signal)//2]
+    X_prime_2 = fourier_domain_signal[len(fourier_domain_signal)//2:]
+
+    X_1 = []
+    for i in range(1, len(X_prime_1)+1):
+        X_1.append(X_prime_1[-i])
+    X_2 = []
+    for i in range(1, len(X_prime_2)+1):
+        X_2.append(X_prime_2[-i])
+
+    X_prime = np.concatenate((X_1, X_2), axis=None)
+
+    # return to time domain
+    time_domain_signal = ifft(X_prime)
+
+    # convert signal to wav file
+    wavfile.write("decoded_message.wav", samplerate, time_domain_signal.astype(np.int16))
+
+    # plot function
+    def plot(data_to_plot):
+        time = np.linspace(0., length, data_to_plot.shape[0])
+
+        plt.plot(time, data_to_plot[:], label="signal")
+
+        plt.legend()
+
+        plt.xlabel("Time [s]")
+
+        plt.ylabel("Amplitude")
+
+        plt.show()
+
+
+    \end{lstlisting}\\
+
+
+
+
+\end{enumerate}
+
+
+\end{document}
