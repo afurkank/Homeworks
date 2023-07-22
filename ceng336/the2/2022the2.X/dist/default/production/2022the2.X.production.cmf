@@ -1,0 +1,631 @@
+%CMF
+# %PSECTS Section
+# For each object file, details of its psects are enumerated here.
+# The begining of the section is indicated by %PSECTS.  The first
+# line indicates the name of the first object file, e.g.
+#    $foo.obj
+# Each line that follows describes a psect in that object file, until
+# the next object file.  The lines that describe a psect have the
+# format:
+#    <psect name> <class name> <space> <link address> <load addresses> <length> <delta>
+# All addresses and the length are given in unqualified hexadecimal
+# in delta units.  Any other numeric values are decimal.
+%PSECTS
+$build/default/production/main.o
+CODE - 0 0 0 39A 1
+udata_acs COMRAM 1 0 0 15 1
+config CONFIG 4 300001 300001 D 1
+# %UNUSED Section
+# This section enumerates the unused ranges of each CLASS. Each entry
+# is described on a single line as follows:
+#    <class name> <range> <delta>
+# Addresses given in the range are in hexadecimal and units of delta.
+%UNUSED
+RAM 80-F7F 1
+SFR F80-FFF 1
+BANK0 80-FF 1
+BANK1 100-1FF 1
+BANK2 200-2FF 1
+BANK3 300-3FF 1
+BANK4 400-4FF 1
+BANK5 500-5FF 1
+BANK6 600-6FF 1
+BANK7 700-7FF 1
+BANK8 800-8FF 1
+BANK9 900-9FF 1
+CONST 39A-FFFF 1
+IDLOC 200000-200007 1
+SMALLCONST 1000-FFFF 1
+CODE 39A-FFFF 1
+BANK10 A00-AFF 1
+BANK11 B00-BFF 1
+BANK12 C00-CFF 1
+BANK13 D00-DFF 1
+BANK14 E00-EFF 1
+BANK15 F00-F7F 1
+BIGRAM 39A-F7F 1
+COMRAM 15-7F 1
+CONFIG 300000-300000 1
+EEDATA F00000-F003FF 1
+MEDIUMCONST 1000-FFFF 1
+# %LINETAB Section
+# This section enumerates the file/line to address mappings.
+# The beginning of the section is indicated by %LINETAB.
+# The first line indicates the name of the first object file, e.g.
+#   $foo.obj
+# Each line that follows describes a single mapping until the next
+# object file.  Mappings have the following format:
+#    <address> <psect name> <class name> ><line number>:<file name>
+# The address is absolute and given given in unqualified hex 
+# in delta units of the psect. All mappings within an object file
+# are in ascending order of addresses.
+# All other numeric values are in decimal.
+%LINETAB
+$build/default/production/main.o
+0 CODE ABS >93:/home/furkan/MPLABXProjects/2022the2.X/main.s
+0 CODE ABS >94:/home/furkan/MPLABXProjects/2022the2.X/main.s
+4 CODE ABS >98:/home/furkan/MPLABXProjects/2022the2.X/main.s
+8 CODE ABS >99:/home/furkan/MPLABXProjects/2022the2.X/main.s
+8 CODE ABS >100:/home/furkan/MPLABXProjects/2022the2.X/main.s
+A CODE ABS >101:/home/furkan/MPLABXProjects/2022the2.X/main.s
+E CODE ABS >102:/home/furkan/MPLABXProjects/2022the2.X/main.s
+10 CODE ABS >103:/home/furkan/MPLABXProjects/2022the2.X/main.s
+14 CODE ABS >104:/home/furkan/MPLABXProjects/2022the2.X/main.s
+16 CODE ABS >105:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1A CODE ABS >106:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1C CODE ABS >107:/home/furkan/MPLABXProjects/2022the2.X/main.s
+20 CODE ABS >108:/home/furkan/MPLABXProjects/2022the2.X/main.s
+22 CODE ABS >110:/home/furkan/MPLABXProjects/2022the2.X/main.s
+22 CODE ABS >112:/home/furkan/MPLABXProjects/2022the2.X/main.s
+24 CODE ABS >113:/home/furkan/MPLABXProjects/2022the2.X/main.s
+26 CODE ABS >114:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2A CODE ABS >115:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2E CODE ABS >116:/home/furkan/MPLABXProjects/2022the2.X/main.s
+30 CODE ABS >118:/home/furkan/MPLABXProjects/2022the2.X/main.s
+30 CODE ABS >120:/home/furkan/MPLABXProjects/2022the2.X/main.s
+32 CODE ABS >121:/home/furkan/MPLABXProjects/2022the2.X/main.s
+34 CODE ABS >122:/home/furkan/MPLABXProjects/2022the2.X/main.s
+38 CODE ABS >125:/home/furkan/MPLABXProjects/2022the2.X/main.s
+3A CODE ABS >127:/home/furkan/MPLABXProjects/2022the2.X/main.s
+3A CODE ABS >130:/home/furkan/MPLABXProjects/2022the2.X/main.s
+3C CODE ABS >131:/home/furkan/MPLABXProjects/2022the2.X/main.s
+40 CODE ABS >132:/home/furkan/MPLABXProjects/2022the2.X/main.s
+44 CODE ABS >133:/home/furkan/MPLABXProjects/2022the2.X/main.s
+46 CODE ABS >135:/home/furkan/MPLABXProjects/2022the2.X/main.s
+46 CODE ABS >137:/home/furkan/MPLABXProjects/2022the2.X/main.s
+4A CODE ABS >138:/home/furkan/MPLABXProjects/2022the2.X/main.s
+4C CODE ABS >139:/home/furkan/MPLABXProjects/2022the2.X/main.s
+4E CODE ABS >140:/home/furkan/MPLABXProjects/2022the2.X/main.s
+52 CODE ABS >141:/home/furkan/MPLABXProjects/2022the2.X/main.s
+54 CODE ABS >145:/home/furkan/MPLABXProjects/2022the2.X/main.s
+54 CODE ABS >147:/home/furkan/MPLABXProjects/2022the2.X/main.s
+56 CODE ABS >148:/home/furkan/MPLABXProjects/2022the2.X/main.s
+58 CODE ABS >149:/home/furkan/MPLABXProjects/2022the2.X/main.s
+5A CODE ABS >150:/home/furkan/MPLABXProjects/2022the2.X/main.s
+5C CODE ABS >154:/home/furkan/MPLABXProjects/2022the2.X/main.s
+5E CODE ABS >155:/home/furkan/MPLABXProjects/2022the2.X/main.s
+60 CODE ABS >156:/home/furkan/MPLABXProjects/2022the2.X/main.s
+62 CODE ABS >157:/home/furkan/MPLABXProjects/2022the2.X/main.s
+64 CODE ABS >158:/home/furkan/MPLABXProjects/2022the2.X/main.s
+66 CODE ABS >159:/home/furkan/MPLABXProjects/2022the2.X/main.s
+68 CODE ABS >160:/home/furkan/MPLABXProjects/2022the2.X/main.s
+6A CODE ABS >161:/home/furkan/MPLABXProjects/2022the2.X/main.s
+6C CODE ABS >165:/home/furkan/MPLABXProjects/2022the2.X/main.s
+6E CODE ABS >166:/home/furkan/MPLABXProjects/2022the2.X/main.s
+70 CODE ABS >168:/home/furkan/MPLABXProjects/2022the2.X/main.s
+72 CODE ABS >169:/home/furkan/MPLABXProjects/2022the2.X/main.s
+74 CODE ABS >170:/home/furkan/MPLABXProjects/2022the2.X/main.s
+76 CODE ABS >171:/home/furkan/MPLABXProjects/2022the2.X/main.s
+78 CODE ABS >172:/home/furkan/MPLABXProjects/2022the2.X/main.s
+7A CODE ABS >173:/home/furkan/MPLABXProjects/2022the2.X/main.s
+7C CODE ABS >174:/home/furkan/MPLABXProjects/2022the2.X/main.s
+7E CODE ABS >175:/home/furkan/MPLABXProjects/2022the2.X/main.s
+80 CODE ABS >176:/home/furkan/MPLABXProjects/2022the2.X/main.s
+82 CODE ABS >177:/home/furkan/MPLABXProjects/2022the2.X/main.s
+84 CODE ABS >180:/home/furkan/MPLABXProjects/2022the2.X/main.s
+86 CODE ABS >181:/home/furkan/MPLABXProjects/2022the2.X/main.s
+88 CODE ABS >183:/home/furkan/MPLABXProjects/2022the2.X/main.s
+8A CODE ABS >184:/home/furkan/MPLABXProjects/2022the2.X/main.s
+8C CODE ABS >186:/home/furkan/MPLABXProjects/2022the2.X/main.s
+8E CODE ABS >187:/home/furkan/MPLABXProjects/2022the2.X/main.s
+90 CODE ABS >189:/home/furkan/MPLABXProjects/2022the2.X/main.s
+92 CODE ABS >190:/home/furkan/MPLABXProjects/2022the2.X/main.s
+94 CODE ABS >194:/home/furkan/MPLABXProjects/2022the2.X/main.s
+96 CODE ABS >195:/home/furkan/MPLABXProjects/2022the2.X/main.s
+98 CODE ABS >198:/home/furkan/MPLABXProjects/2022the2.X/main.s
+9A CODE ABS >199:/home/furkan/MPLABXProjects/2022the2.X/main.s
+9C CODE ABS >200:/home/furkan/MPLABXProjects/2022the2.X/main.s
+9E CODE ABS >201:/home/furkan/MPLABXProjects/2022the2.X/main.s
+A0 CODE ABS >204:/home/furkan/MPLABXProjects/2022the2.X/main.s
+A2 CODE ABS >205:/home/furkan/MPLABXProjects/2022the2.X/main.s
+A4 CODE ABS >206:/home/furkan/MPLABXProjects/2022the2.X/main.s
+A6 CODE ABS >207:/home/furkan/MPLABXProjects/2022the2.X/main.s
+A8 CODE ABS >209:/home/furkan/MPLABXProjects/2022the2.X/main.s
+AC CODE ABS >213:/home/furkan/MPLABXProjects/2022the2.X/main.s
+AC CODE ABS >214:/home/furkan/MPLABXProjects/2022the2.X/main.s
+AE CODE ABS >218:/home/furkan/MPLABXProjects/2022the2.X/main.s
+AE CODE ABS >219:/home/furkan/MPLABXProjects/2022the2.X/main.s
+B0 CODE ABS >220:/home/furkan/MPLABXProjects/2022the2.X/main.s
+B2 CODE ABS >221:/home/furkan/MPLABXProjects/2022the2.X/main.s
+B6 CODE ABS >222:/home/furkan/MPLABXProjects/2022the2.X/main.s
+BA CODE ABS >223:/home/furkan/MPLABXProjects/2022the2.X/main.s
+BE CODE ABS >228:/home/furkan/MPLABXProjects/2022the2.X/main.s
+C0 CODE ABS >232:/home/furkan/MPLABXProjects/2022the2.X/main.s
+C0 CODE ABS >233:/home/furkan/MPLABXProjects/2022the2.X/main.s
+C2 CODE ABS >234:/home/furkan/MPLABXProjects/2022the2.X/main.s
+C4 CODE ABS >238:/home/furkan/MPLABXProjects/2022the2.X/main.s
+C4 CODE ABS >247:/home/furkan/MPLABXProjects/2022the2.X/main.s
+C6 CODE ABS >248:/home/furkan/MPLABXProjects/2022the2.X/main.s
+C8 CODE ABS >249:/home/furkan/MPLABXProjects/2022the2.X/main.s
+CC CODE ABS >250:/home/furkan/MPLABXProjects/2022the2.X/main.s
+CE CODE ABS >251:/home/furkan/MPLABXProjects/2022the2.X/main.s
+D0 CODE ABS >252:/home/furkan/MPLABXProjects/2022the2.X/main.s
+D4 CODE ABS >253:/home/furkan/MPLABXProjects/2022the2.X/main.s
+D6 CODE ABS >254:/home/furkan/MPLABXProjects/2022the2.X/main.s
+D8 CODE ABS >255:/home/furkan/MPLABXProjects/2022the2.X/main.s
+DC CODE ABS >256:/home/furkan/MPLABXProjects/2022the2.X/main.s
+E0 CODE ABS >257:/home/furkan/MPLABXProjects/2022the2.X/main.s
+E2 CODE ABS >258:/home/furkan/MPLABXProjects/2022the2.X/main.s
+E4 CODE ABS >259:/home/furkan/MPLABXProjects/2022the2.X/main.s
+E4 CODE ABS >260:/home/furkan/MPLABXProjects/2022the2.X/main.s
+E6 CODE ABS >261:/home/furkan/MPLABXProjects/2022the2.X/main.s
+E8 CODE ABS >262:/home/furkan/MPLABXProjects/2022the2.X/main.s
+E8 CODE ABS >263:/home/furkan/MPLABXProjects/2022the2.X/main.s
+EA CODE ABS >264:/home/furkan/MPLABXProjects/2022the2.X/main.s
+EC CODE ABS >265:/home/furkan/MPLABXProjects/2022the2.X/main.s
+EE CODE ABS >266:/home/furkan/MPLABXProjects/2022the2.X/main.s
+EE CODE ABS >267:/home/furkan/MPLABXProjects/2022the2.X/main.s
+F0 CODE ABS >268:/home/furkan/MPLABXProjects/2022the2.X/main.s
+F2 CODE ABS >269:/home/furkan/MPLABXProjects/2022the2.X/main.s
+F4 CODE ABS >273:/home/furkan/MPLABXProjects/2022the2.X/main.s
+F4 CODE ABS >277:/home/furkan/MPLABXProjects/2022the2.X/main.s
+F6 CODE ABS >278:/home/furkan/MPLABXProjects/2022the2.X/main.s
+F8 CODE ABS >279:/home/furkan/MPLABXProjects/2022the2.X/main.s
+FA CODE ABS >283:/home/furkan/MPLABXProjects/2022the2.X/main.s
+FA CODE ABS >287:/home/furkan/MPLABXProjects/2022the2.X/main.s
+FE CODE ABS >288:/home/furkan/MPLABXProjects/2022the2.X/main.s
+100 CODE ABS >289:/home/furkan/MPLABXProjects/2022the2.X/main.s
+104 CODE ABS >290:/home/furkan/MPLABXProjects/2022the2.X/main.s
+106 CODE ABS >291:/home/furkan/MPLABXProjects/2022the2.X/main.s
+10A CODE ABS >292:/home/furkan/MPLABXProjects/2022the2.X/main.s
+10C CODE ABS >293:/home/furkan/MPLABXProjects/2022the2.X/main.s
+110 CODE ABS >294:/home/furkan/MPLABXProjects/2022the2.X/main.s
+112 CODE ABS >295:/home/furkan/MPLABXProjects/2022the2.X/main.s
+116 CODE ABS >297:/home/furkan/MPLABXProjects/2022the2.X/main.s
+118 CODE ABS >298:/home/furkan/MPLABXProjects/2022the2.X/main.s
+11A CODE ABS >299:/home/furkan/MPLABXProjects/2022the2.X/main.s
+11C CODE ABS >300:/home/furkan/MPLABXProjects/2022the2.X/main.s
+120 CODE ABS >301:/home/furkan/MPLABXProjects/2022the2.X/main.s
+122 CODE ABS >302:/home/furkan/MPLABXProjects/2022the2.X/main.s
+122 CODE ABS >303:/home/furkan/MPLABXProjects/2022the2.X/main.s
+124 CODE ABS >304:/home/furkan/MPLABXProjects/2022the2.X/main.s
+126 CODE ABS >305:/home/furkan/MPLABXProjects/2022the2.X/main.s
+128 CODE ABS >306:/home/furkan/MPLABXProjects/2022the2.X/main.s
+12A CODE ABS >307:/home/furkan/MPLABXProjects/2022the2.X/main.s
+12E CODE ABS >308:/home/furkan/MPLABXProjects/2022the2.X/main.s
+130 CODE ABS >309:/home/furkan/MPLABXProjects/2022the2.X/main.s
+134 CODE ABS >310:/home/furkan/MPLABXProjects/2022the2.X/main.s
+136 CODE ABS >311:/home/furkan/MPLABXProjects/2022the2.X/main.s
+136 CODE ABS >312:/home/furkan/MPLABXProjects/2022the2.X/main.s
+138 CODE ABS >313:/home/furkan/MPLABXProjects/2022the2.X/main.s
+13A CODE ABS >314:/home/furkan/MPLABXProjects/2022the2.X/main.s
+13C CODE ABS >315:/home/furkan/MPLABXProjects/2022the2.X/main.s
+13E CODE ABS >316:/home/furkan/MPLABXProjects/2022the2.X/main.s
+142 CODE ABS >317:/home/furkan/MPLABXProjects/2022the2.X/main.s
+144 CODE ABS >318:/home/furkan/MPLABXProjects/2022the2.X/main.s
+148 CODE ABS >319:/home/furkan/MPLABXProjects/2022the2.X/main.s
+14A CODE ABS >320:/home/furkan/MPLABXProjects/2022the2.X/main.s
+14A CODE ABS >321:/home/furkan/MPLABXProjects/2022the2.X/main.s
+14C CODE ABS >322:/home/furkan/MPLABXProjects/2022the2.X/main.s
+14E CODE ABS >323:/home/furkan/MPLABXProjects/2022the2.X/main.s
+150 CODE ABS >324:/home/furkan/MPLABXProjects/2022the2.X/main.s
+152 CODE ABS >325:/home/furkan/MPLABXProjects/2022the2.X/main.s
+156 CODE ABS >326:/home/furkan/MPLABXProjects/2022the2.X/main.s
+158 CODE ABS >327:/home/furkan/MPLABXProjects/2022the2.X/main.s
+15C CODE ABS >328:/home/furkan/MPLABXProjects/2022the2.X/main.s
+15E CODE ABS >329:/home/furkan/MPLABXProjects/2022the2.X/main.s
+15E CODE ABS >330:/home/furkan/MPLABXProjects/2022the2.X/main.s
+160 CODE ABS >331:/home/furkan/MPLABXProjects/2022the2.X/main.s
+162 CODE ABS >332:/home/furkan/MPLABXProjects/2022the2.X/main.s
+164 CODE ABS >333:/home/furkan/MPLABXProjects/2022the2.X/main.s
+166 CODE ABS >334:/home/furkan/MPLABXProjects/2022the2.X/main.s
+16A CODE ABS >335:/home/furkan/MPLABXProjects/2022the2.X/main.s
+16C CODE ABS >336:/home/furkan/MPLABXProjects/2022the2.X/main.s
+170 CODE ABS >337:/home/furkan/MPLABXProjects/2022the2.X/main.s
+172 CODE ABS >338:/home/furkan/MPLABXProjects/2022the2.X/main.s
+172 CODE ABS >339:/home/furkan/MPLABXProjects/2022the2.X/main.s
+174 CODE ABS >340:/home/furkan/MPLABXProjects/2022the2.X/main.s
+176 CODE ABS >341:/home/furkan/MPLABXProjects/2022the2.X/main.s
+178 CODE ABS >345:/home/furkan/MPLABXProjects/2022the2.X/main.s
+178 CODE ABS >350:/home/furkan/MPLABXProjects/2022the2.X/main.s
+17C CODE ABS >352:/home/furkan/MPLABXProjects/2022the2.X/main.s
+180 CODE ABS >353:/home/furkan/MPLABXProjects/2022the2.X/main.s
+182 CODE ABS >354:/home/furkan/MPLABXProjects/2022the2.X/main.s
+186 CODE ABS >355:/home/furkan/MPLABXProjects/2022the2.X/main.s
+18A CODE ABS >356:/home/furkan/MPLABXProjects/2022the2.X/main.s
+18C CODE ABS >357:/home/furkan/MPLABXProjects/2022the2.X/main.s
+190 CODE ABS >358:/home/furkan/MPLABXProjects/2022the2.X/main.s
+194 CODE ABS >359:/home/furkan/MPLABXProjects/2022the2.X/main.s
+196 CODE ABS >360:/home/furkan/MPLABXProjects/2022the2.X/main.s
+19A CODE ABS >361:/home/furkan/MPLABXProjects/2022the2.X/main.s
+19E CODE ABS >362:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1A0 CODE ABS >363:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1A4 CODE ABS >365:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1A8 CODE ABS >367:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1AA CODE ABS >371:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1AA CODE ABS >372:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1AC CODE ABS >373:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1B0 CODE ABS >374:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1B2 CODE ABS >375:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1B2 CODE ABS >376:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1B4 CODE ABS >377:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1B8 CODE ABS >378:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1BA CODE ABS >379:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1BA CODE ABS >380:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1BC CODE ABS >381:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1C0 CODE ABS >382:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1C2 CODE ABS >383:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1C2 CODE ABS >384:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1C4 CODE ABS >385:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1C8 CODE ABS >386:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1CA CODE ABS >388:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1CA CODE ABS >391:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1CC CODE ABS >392:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1CE CODE ABS >394:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1D2 CODE ABS >395:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1D4 CODE ABS >396:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1D8 CODE ABS >397:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1DA CODE ABS >398:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1DE CODE ABS >399:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1E0 CODE ABS >400:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1E0 CODE ABS >401:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1E2 CODE ABS >402:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1E6 CODE ABS >403:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1E8 CODE ABS >404:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1E8 CODE ABS >405:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1EA CODE ABS >406:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1EE CODE ABS >407:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1F0 CODE ABS >409:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1F0 CODE ABS >412:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1F2 CODE ABS >413:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1F6 CODE ABS >414:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1F8 CODE ABS >415:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1FC CODE ABS >416:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1FE CODE ABS >417:/home/furkan/MPLABXProjects/2022the2.X/main.s
+1FE CODE ABS >418:/home/furkan/MPLABXProjects/2022the2.X/main.s
+200 CODE ABS >419:/home/furkan/MPLABXProjects/2022the2.X/main.s
+202 CODE ABS >420:/home/furkan/MPLABXProjects/2022the2.X/main.s
+204 CODE ABS >421:/home/furkan/MPLABXProjects/2022the2.X/main.s
+206 CODE ABS >422:/home/furkan/MPLABXProjects/2022the2.X/main.s
+208 CODE ABS >423:/home/furkan/MPLABXProjects/2022the2.X/main.s
+208 CODE ABS >424:/home/furkan/MPLABXProjects/2022the2.X/main.s
+20A CODE ABS >425:/home/furkan/MPLABXProjects/2022the2.X/main.s
+20C CODE ABS >426:/home/furkan/MPLABXProjects/2022the2.X/main.s
+20E CODE ABS >427:/home/furkan/MPLABXProjects/2022the2.X/main.s
+210 CODE ABS >428:/home/furkan/MPLABXProjects/2022the2.X/main.s
+212 CODE ABS >430:/home/furkan/MPLABXProjects/2022the2.X/main.s
+212 CODE ABS >433:/home/furkan/MPLABXProjects/2022the2.X/main.s
+214 CODE ABS >434:/home/furkan/MPLABXProjects/2022the2.X/main.s
+218 CODE ABS >435:/home/furkan/MPLABXProjects/2022the2.X/main.s
+21A CODE ABS >436:/home/furkan/MPLABXProjects/2022the2.X/main.s
+21E CODE ABS >437:/home/furkan/MPLABXProjects/2022the2.X/main.s
+220 CODE ABS >438:/home/furkan/MPLABXProjects/2022the2.X/main.s
+220 CODE ABS >439:/home/furkan/MPLABXProjects/2022the2.X/main.s
+222 CODE ABS >440:/home/furkan/MPLABXProjects/2022the2.X/main.s
+224 CODE ABS >441:/home/furkan/MPLABXProjects/2022the2.X/main.s
+226 CODE ABS >442:/home/furkan/MPLABXProjects/2022the2.X/main.s
+228 CODE ABS >443:/home/furkan/MPLABXProjects/2022the2.X/main.s
+22A CODE ABS >444:/home/furkan/MPLABXProjects/2022the2.X/main.s
+22A CODE ABS >445:/home/furkan/MPLABXProjects/2022the2.X/main.s
+22C CODE ABS >446:/home/furkan/MPLABXProjects/2022the2.X/main.s
+22E CODE ABS >447:/home/furkan/MPLABXProjects/2022the2.X/main.s
+230 CODE ABS >448:/home/furkan/MPLABXProjects/2022the2.X/main.s
+232 CODE ABS >449:/home/furkan/MPLABXProjects/2022the2.X/main.s
+234 CODE ABS >451:/home/furkan/MPLABXProjects/2022the2.X/main.s
+234 CODE ABS >454:/home/furkan/MPLABXProjects/2022the2.X/main.s
+236 CODE ABS >455:/home/furkan/MPLABXProjects/2022the2.X/main.s
+23A CODE ABS >456:/home/furkan/MPLABXProjects/2022the2.X/main.s
+23C CODE ABS >457:/home/furkan/MPLABXProjects/2022the2.X/main.s
+240 CODE ABS >458:/home/furkan/MPLABXProjects/2022the2.X/main.s
+242 CODE ABS >459:/home/furkan/MPLABXProjects/2022the2.X/main.s
+242 CODE ABS >460:/home/furkan/MPLABXProjects/2022the2.X/main.s
+244 CODE ABS >461:/home/furkan/MPLABXProjects/2022the2.X/main.s
+246 CODE ABS >462:/home/furkan/MPLABXProjects/2022the2.X/main.s
+248 CODE ABS >463:/home/furkan/MPLABXProjects/2022the2.X/main.s
+248 CODE ABS >464:/home/furkan/MPLABXProjects/2022the2.X/main.s
+24A CODE ABS >465:/home/furkan/MPLABXProjects/2022the2.X/main.s
+24C CODE ABS >466:/home/furkan/MPLABXProjects/2022the2.X/main.s
+24E CODE ABS >468:/home/furkan/MPLABXProjects/2022the2.X/main.s
+24E CODE ABS >470:/home/furkan/MPLABXProjects/2022the2.X/main.s
+250 CODE ABS >471:/home/furkan/MPLABXProjects/2022the2.X/main.s
+252 CODE ABS >472:/home/furkan/MPLABXProjects/2022the2.X/main.s
+254 CODE ABS >473:/home/furkan/MPLABXProjects/2022the2.X/main.s
+256 CODE ABS >474:/home/furkan/MPLABXProjects/2022the2.X/main.s
+258 CODE ABS >475:/home/furkan/MPLABXProjects/2022the2.X/main.s
+25A CODE ABS >476:/home/furkan/MPLABXProjects/2022the2.X/main.s
+25C CODE ABS >477:/home/furkan/MPLABXProjects/2022the2.X/main.s
+25E CODE ABS >478:/home/furkan/MPLABXProjects/2022the2.X/main.s
+260 CODE ABS >479:/home/furkan/MPLABXProjects/2022the2.X/main.s
+262 CODE ABS >480:/home/furkan/MPLABXProjects/2022the2.X/main.s
+264 CODE ABS >481:/home/furkan/MPLABXProjects/2022the2.X/main.s
+266 CODE ABS >482:/home/furkan/MPLABXProjects/2022the2.X/main.s
+268 CODE ABS >483:/home/furkan/MPLABXProjects/2022the2.X/main.s
+26A CODE ABS >484:/home/furkan/MPLABXProjects/2022the2.X/main.s
+26C CODE ABS >485:/home/furkan/MPLABXProjects/2022the2.X/main.s
+26E CODE ABS >487:/home/furkan/MPLABXProjects/2022the2.X/main.s
+270 CODE ABS >488:/home/furkan/MPLABXProjects/2022the2.X/main.s
+272 CODE ABS >489:/home/furkan/MPLABXProjects/2022the2.X/main.s
+274 CODE ABS >490:/home/furkan/MPLABXProjects/2022the2.X/main.s
+276 CODE ABS >491:/home/furkan/MPLABXProjects/2022the2.X/main.s
+278 CODE ABS >492:/home/furkan/MPLABXProjects/2022the2.X/main.s
+27A CODE ABS >493:/home/furkan/MPLABXProjects/2022the2.X/main.s
+27C CODE ABS >494:/home/furkan/MPLABXProjects/2022the2.X/main.s
+27E CODE ABS >495:/home/furkan/MPLABXProjects/2022the2.X/main.s
+280 CODE ABS >496:/home/furkan/MPLABXProjects/2022the2.X/main.s
+282 CODE ABS >497:/home/furkan/MPLABXProjects/2022the2.X/main.s
+284 CODE ABS >498:/home/furkan/MPLABXProjects/2022the2.X/main.s
+286 CODE ABS >499:/home/furkan/MPLABXProjects/2022the2.X/main.s
+288 CODE ABS >500:/home/furkan/MPLABXProjects/2022the2.X/main.s
+28A CODE ABS >501:/home/furkan/MPLABXProjects/2022the2.X/main.s
+28C CODE ABS >502:/home/furkan/MPLABXProjects/2022the2.X/main.s
+28E CODE ABS >504:/home/furkan/MPLABXProjects/2022the2.X/main.s
+290 CODE ABS >509:/home/furkan/MPLABXProjects/2022the2.X/main.s
+290 CODE ABS >510:/home/furkan/MPLABXProjects/2022the2.X/main.s
+292 CODE ABS >514:/home/furkan/MPLABXProjects/2022the2.X/main.s
+294 CODE ABS >515:/home/furkan/MPLABXProjects/2022the2.X/main.s
+296 CODE ABS >516:/home/furkan/MPLABXProjects/2022the2.X/main.s
+298 CODE ABS >520:/home/furkan/MPLABXProjects/2022the2.X/main.s
+298 CODE ABS >521:/home/furkan/MPLABXProjects/2022the2.X/main.s
+29A CODE ABS >522:/home/furkan/MPLABXProjects/2022the2.X/main.s
+29C CODE ABS >523:/home/furkan/MPLABXProjects/2022the2.X/main.s
+29E CODE ABS >524:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2A0 CODE ABS >532:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2A2 CODE ABS >533:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2A4 CODE ABS >534:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2A6 CODE ABS >537:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2A6 CODE ABS >544:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2A8 CODE ABS >545:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2AA CODE ABS >546:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2AC CODE ABS >548:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2AC CODE ABS >551:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2B0 CODE ABS >552:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2B2 CODE ABS >553:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2B6 CODE ABS >554:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2B8 CODE ABS >555:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2BC CODE ABS >556:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2BE CODE ABS >557:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2C2 CODE ABS >558:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2C4 CODE ABS >559:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2C8 CODE ABS >560:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2CA CODE ABS >561:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2CE CODE ABS >562:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2D0 CODE ABS >563:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2D4 CODE ABS >564:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2D6 CODE ABS >565:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2DA CODE ABS >566:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2DC CODE ABS >567:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2E0 CODE ABS >568:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2E2 CODE ABS >569:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2E6 CODE ABS >570:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2E8 CODE ABS >571:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2E8 CODE ABS >572:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2EA CODE ABS >573:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2EC CODE ABS >574:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2EE CODE ABS >575:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2F0 CODE ABS >576:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2F2 CODE ABS >577:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2F2 CODE ABS >578:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2F4 CODE ABS >579:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2F6 CODE ABS >580:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2F8 CODE ABS >581:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2FA CODE ABS >582:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2FC CODE ABS >583:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2FC CODE ABS >584:/home/furkan/MPLABXProjects/2022the2.X/main.s
+2FE CODE ABS >585:/home/furkan/MPLABXProjects/2022the2.X/main.s
+300 CODE ABS >586:/home/furkan/MPLABXProjects/2022the2.X/main.s
+302 CODE ABS >587:/home/furkan/MPLABXProjects/2022the2.X/main.s
+304 CODE ABS >588:/home/furkan/MPLABXProjects/2022the2.X/main.s
+306 CODE ABS >589:/home/furkan/MPLABXProjects/2022the2.X/main.s
+306 CODE ABS >590:/home/furkan/MPLABXProjects/2022the2.X/main.s
+308 CODE ABS >591:/home/furkan/MPLABXProjects/2022the2.X/main.s
+30A CODE ABS >592:/home/furkan/MPLABXProjects/2022the2.X/main.s
+30C CODE ABS >593:/home/furkan/MPLABXProjects/2022the2.X/main.s
+30E CODE ABS >594:/home/furkan/MPLABXProjects/2022the2.X/main.s
+310 CODE ABS >595:/home/furkan/MPLABXProjects/2022the2.X/main.s
+310 CODE ABS >596:/home/furkan/MPLABXProjects/2022the2.X/main.s
+312 CODE ABS >597:/home/furkan/MPLABXProjects/2022the2.X/main.s
+314 CODE ABS >598:/home/furkan/MPLABXProjects/2022the2.X/main.s
+316 CODE ABS >599:/home/furkan/MPLABXProjects/2022the2.X/main.s
+318 CODE ABS >600:/home/furkan/MPLABXProjects/2022the2.X/main.s
+31A CODE ABS >601:/home/furkan/MPLABXProjects/2022the2.X/main.s
+31A CODE ABS >602:/home/furkan/MPLABXProjects/2022the2.X/main.s
+31C CODE ABS >603:/home/furkan/MPLABXProjects/2022the2.X/main.s
+31E CODE ABS >604:/home/furkan/MPLABXProjects/2022the2.X/main.s
+320 CODE ABS >605:/home/furkan/MPLABXProjects/2022the2.X/main.s
+322 CODE ABS >606:/home/furkan/MPLABXProjects/2022the2.X/main.s
+324 CODE ABS >607:/home/furkan/MPLABXProjects/2022the2.X/main.s
+324 CODE ABS >608:/home/furkan/MPLABXProjects/2022the2.X/main.s
+326 CODE ABS >609:/home/furkan/MPLABXProjects/2022the2.X/main.s
+328 CODE ABS >610:/home/furkan/MPLABXProjects/2022the2.X/main.s
+32A CODE ABS >611:/home/furkan/MPLABXProjects/2022the2.X/main.s
+32C CODE ABS >612:/home/furkan/MPLABXProjects/2022the2.X/main.s
+32E CODE ABS >613:/home/furkan/MPLABXProjects/2022the2.X/main.s
+32E CODE ABS >614:/home/furkan/MPLABXProjects/2022the2.X/main.s
+330 CODE ABS >615:/home/furkan/MPLABXProjects/2022the2.X/main.s
+332 CODE ABS >616:/home/furkan/MPLABXProjects/2022the2.X/main.s
+334 CODE ABS >617:/home/furkan/MPLABXProjects/2022the2.X/main.s
+336 CODE ABS >618:/home/furkan/MPLABXProjects/2022the2.X/main.s
+338 CODE ABS >619:/home/furkan/MPLABXProjects/2022the2.X/main.s
+338 CODE ABS >620:/home/furkan/MPLABXProjects/2022the2.X/main.s
+33A CODE ABS >621:/home/furkan/MPLABXProjects/2022the2.X/main.s
+33C CODE ABS >622:/home/furkan/MPLABXProjects/2022the2.X/main.s
+33E CODE ABS >623:/home/furkan/MPLABXProjects/2022the2.X/main.s
+340 CODE ABS >624:/home/furkan/MPLABXProjects/2022the2.X/main.s
+342 CODE ABS >628:/home/furkan/MPLABXProjects/2022the2.X/main.s
+342 CODE ABS >629:/home/furkan/MPLABXProjects/2022the2.X/main.s
+344 CODE ABS >630:/home/furkan/MPLABXProjects/2022the2.X/main.s
+346 CODE ABS >631:/home/furkan/MPLABXProjects/2022the2.X/main.s
+348 CODE ABS >632:/home/furkan/MPLABXProjects/2022the2.X/main.s
+348 CODE ABS >633:/home/furkan/MPLABXProjects/2022the2.X/main.s
+34C CODE ABS >634:/home/furkan/MPLABXProjects/2022the2.X/main.s
+350 CODE ABS >635:/home/furkan/MPLABXProjects/2022the2.X/main.s
+352 CODE ABS >636:/home/furkan/MPLABXProjects/2022the2.X/main.s
+352 CODE ABS >637:/home/furkan/MPLABXProjects/2022the2.X/main.s
+356 CODE ABS >638:/home/furkan/MPLABXProjects/2022the2.X/main.s
+35A CODE ABS >639:/home/furkan/MPLABXProjects/2022the2.X/main.s
+35C CODE ABS >640:/home/furkan/MPLABXProjects/2022the2.X/main.s
+35C CODE ABS >641:/home/furkan/MPLABXProjects/2022the2.X/main.s
+360 CODE ABS >642:/home/furkan/MPLABXProjects/2022the2.X/main.s
+364 CODE ABS >643:/home/furkan/MPLABXProjects/2022the2.X/main.s
+366 CODE ABS >644:/home/furkan/MPLABXProjects/2022the2.X/main.s
+366 CODE ABS >645:/home/furkan/MPLABXProjects/2022the2.X/main.s
+368 CODE ABS >646:/home/furkan/MPLABXProjects/2022the2.X/main.s
+36A CODE ABS >647:/home/furkan/MPLABXProjects/2022the2.X/main.s
+36C CODE ABS >648:/home/furkan/MPLABXProjects/2022the2.X/main.s
+36C CODE ABS >649:/home/furkan/MPLABXProjects/2022the2.X/main.s
+36E CODE ABS >650:/home/furkan/MPLABXProjects/2022the2.X/main.s
+370 CODE ABS >651:/home/furkan/MPLABXProjects/2022the2.X/main.s
+372 CODE ABS >652:/home/furkan/MPLABXProjects/2022the2.X/main.s
+372 CODE ABS >653:/home/furkan/MPLABXProjects/2022the2.X/main.s
+374 CODE ABS >654:/home/furkan/MPLABXProjects/2022the2.X/main.s
+376 CODE ABS >655:/home/furkan/MPLABXProjects/2022the2.X/main.s
+378 CODE ABS >656:/home/furkan/MPLABXProjects/2022the2.X/main.s
+37A CODE ABS >657:/home/furkan/MPLABXProjects/2022the2.X/main.s
+37C CODE ABS >658:/home/furkan/MPLABXProjects/2022the2.X/main.s
+37E CODE ABS >659:/home/furkan/MPLABXProjects/2022the2.X/main.s
+380 CODE ABS >660:/home/furkan/MPLABXProjects/2022the2.X/main.s
+382 CODE ABS >661:/home/furkan/MPLABXProjects/2022the2.X/main.s
+384 CODE ABS >662:/home/furkan/MPLABXProjects/2022the2.X/main.s
+386 CODE ABS >663:/home/furkan/MPLABXProjects/2022the2.X/main.s
+388 CODE ABS >664:/home/furkan/MPLABXProjects/2022the2.X/main.s
+38A CODE ABS >665:/home/furkan/MPLABXProjects/2022the2.X/main.s
+38C CODE ABS >666:/home/furkan/MPLABXProjects/2022the2.X/main.s
+38E CODE ABS >667:/home/furkan/MPLABXProjects/2022the2.X/main.s
+390 CODE ABS >668:/home/furkan/MPLABXProjects/2022the2.X/main.s
+392 CODE ABS >669:/home/furkan/MPLABXProjects/2022the2.X/main.s
+394 CODE ABS >670:/home/furkan/MPLABXProjects/2022the2.X/main.s
+396 CODE ABS >672:/home/furkan/MPLABXProjects/2022the2.X/main.s
+398 CODE ABS >673:/home/furkan/MPLABXProjects/2022the2.X/main.s
+# %SYMTAB Section
+# An enumeration of all symbols in the program.
+# The beginning of the section is indicated by %SYMTAB.
+# Each line describes a single symbol as follows:
+#    <label> <value> [-]<load-adj> <class> <space> <psect> <file-name>
+# The value and load-adj are both in unqualified hexadecimal.
+# All other numeric values are in decimal.  The load-adj is the
+# quantity one needs to add to the symbol value in order to obtain the load
+# address of the symbol.  This value may be signed. If the symbol
+# was defined in a psect then <psect> will be "-". File-name
+# is the name of the object file in which the symbol was defined.
+%SYMTAB
+__Hspace_0 39A 0 ABS 0 - -
+__Hspace_1 15 0 ABS 0 - -
+__Hspace_3 0 0 ABS 0 - -
+__Hspace_4 60000F 0 ABS 0 - -
+__Hudata_bank0 39A 0 ABS 0 udata_bank0 -
+__Hudata_bank1 39A 0 ABS 0 udata_bank1 -
+__Hudata_bank2 39A 0 ABS 0 udata_bank2 -
+__Hudata_bank3 39A 0 ABS 0 udata_bank3 -
+__Hudata_bank4 39A 0 ABS 0 udata_bank4 -
+__Hudata_bank5 39A 0 ABS 0 udata_bank5 -
+__Hudata_bank6 39A 0 ABS 0 udata_bank6 -
+__Hudata_bank7 39A 0 ABS 0 udata_bank7 -
+__Hudata_bank8 39A 0 ABS 0 udata_bank8 -
+__Hudata_bank9 39A 0 ABS 0 udata_bank9 -
+speed 8 0 COMRAM 1 udata_acs build/default/production/main.o
+number 9 0 COMRAM 1 udata_acs build/default/production/main.o
+display_stage E 0 COMRAM 1 udata_acs build/default/production/main.o
+metronome_running D 0 COMRAM 1 udata_acs build/default/production/main.o
+__Hudata_bank10 39A 0 ABS 0 udata_bank10 -
+__Hudata_bank11 39A 0 ABS 0 udata_bank11 -
+__Hudata_bank12 39A 0 ABS 0 udata_bank12 -
+__Hudata_bank13 39A 0 ABS 0 udata_bank13 -
+__Hudata_bank14 39A 0 ABS 0 udata_bank14 -
+__Hudata_bank15 39A 0 ABS 0 udata_bank15 -
+last_rb4 4 0 COMRAM 1 udata_acs build/default/production/main.o
+last_rb5 5 0 COMRAM 1 udata_acs build/default/production/main.o
+last_rb6 6 0 COMRAM 1 udata_acs build/default/production/main.o
+last_rb7 7 0 COMRAM 1 udata_acs build/default/production/main.o
+__Hedata 39A 0 ABS 0 edata -
+__Hudata 39A 0 ABS 0 udata -
+__Hconfig 30000E 0 CONFIG 4 config -
+__Ledata 39A 0 ABS 0 edata -
+__Ludata 39A 0 ABS 0 udata -
+__HCODE 39A 0 ABS 0 CODE -
+__Hcode 39A 0 ABS 0 code -
+__Hdata 39A 0 ABS 0 data -
+__LCODE 0 0 ABS 0 CODE -
+__Lcode 39A 0 ABS 0 code -
+__Ldata 39A 0 ABS 0 data -
+store_beat C 0 COMRAM 1 udata_acs build/default/production/main.o
+__S0 0 0 ABS 0 - -
+__S1 15 0 ABS 0 - -
+__S3 0 0 ABS 0 - -
+beat A 0 COMRAM 1 udata_acs build/default/production/main.o
+__Ludata_bank10 39A 0 ABS 0 udata_bank10 -
+__Ludata_bank11 39A 0 ABS 0 udata_bank11 -
+__Ludata_bank12 39A 0 ABS 0 udata_bank12 -
+__Ludata_bank13 39A 0 ABS 0 udata_bank13 -
+__Ludata_bank14 39A 0 ABS 0 udata_bank14 -
+__Ludata_bank15 39A 0 ABS 0 udata_bank15 -
+__Lconfig 0 0 CONFIG 4 config -
+store_speed 13 0 COMRAM 1 udata_acs build/default/production/main.o
+beat_was_reset 10 0 COMRAM 1 udata_acs build/default/production/main.o
+bar_length B 0 COMRAM 1 udata_acs build/default/production/main.o
+__Lspace_0 0 0 ABS 0 - -
+__Lspace_1 0 0 ABS 0 - -
+__Lspace_3 0 0 ABS 0 - -
+__Lspace_4 0 0 ABS 0 - -
+store_display_stage F 0 COMRAM 1 udata_acs build/default/production/main.o
+__Ludata_bank0 39A 0 ABS 0 udata_bank0 -
+__Ludata_bank1 39A 0 ABS 0 udata_bank1 -
+__Ludata_bank2 39A 0 ABS 0 udata_bank2 -
+__Ludata_bank3 39A 0 ABS 0 udata_bank3 -
+__Ludata_bank4 39A 0 ABS 0 udata_bank4 -
+__Ludata_bank5 39A 0 ABS 0 udata_bank5 -
+__Ludata_bank6 39A 0 ABS 0 udata_bank6 -
+__Ludata_bank7 39A 0 ABS 0 udata_bank7 -
+__Ludata_bank8 39A 0 ABS 0 udata_bank8 -
+__Ludata_bank9 39A 0 ABS 0 udata_bank9 -
+current_rb4 0 0 COMRAM 1 udata_acs build/default/production/main.o
+current_rb5 1 0 COMRAM 1 udata_acs build/default/production/main.o
+current_rb6 2 0 COMRAM 1 udata_acs build/default/production/main.o
+current_rb7 3 0 COMRAM 1 udata_acs build/default/production/main.o
+__Hudata_acs 39A 0 ABS 0 udata_acs -
+current_PORTB 11 0 COMRAM 1 udata_acs build/default/production/main.o
+last_PORTB 12 0 COMRAM 1 udata_acs build/default/production/main.o
+__Ludata_acs 39A 0 ABS 0 udata_acs -
+store_metronome_running 14 0 COMRAM 1 udata_acs build/default/production/main.o
+# %SPLITSTAB Section
+# This section enumerates all the psect splits performed by the assembler.
+# The beginning of the section is indicated by %SPLITSTAB.
+# Each line is a record a particular split, where the parent psect is on
+# the left and the child on the right.  Note that a child psect is always
+# split form the top of the parent psect. All splits from a given parent
+# are listed in the order in which they occurred.
+%SPLITSTAB
+# %DABS Section
+# This section contains a table of all usuage of the assember
+# directive DABS in the program. Each line has the following format:
+#   <name> <space> <address> <size>
+# If the DABS was originally labelled then that shall be <name>,
+# otherwise name will be "-".  The <space> number is in decimal.
+# <address> and <size> are in byte units as unqaulified hexadecimal
+%DABS
+# %SEGMENTS Section
+# This sections enumerates the segments of the program.  Each segment
+# is described on a single line as follows:
+#    <name> <space> <link address> <file address> <size> <delta>
+# Addresses and size are in unqualified hexadecimal.  The link address
+# and size are in units of delta. The file address is in units of bytes.
+# All other numeric quantities are in decimal.
+%SEGMENTS
+udata_acs 1 0 0 15 1
+# %NOTES Section
+# This section contains data of all the note-psects.  The beginning of the section
+# is indicated by %NOTES. The first line indicates the name and decimal
+# byte-length of the first note-psect, e.g.
+#   $codecov_info_hdr 16
+# Each line that follows contains the byte-data of the psect in hexadecimal as a
+# space-separated list. These lines are limited to 16 bytes of data.
+%NOTES
