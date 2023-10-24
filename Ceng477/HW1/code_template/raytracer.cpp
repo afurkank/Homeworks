@@ -41,36 +41,37 @@ int main(int argc, char* argv[])
         {   0,   0,   0 },  // Black
     };
 
-    int width = 640, height = 480;
-    int columnWidth = width / 8; // this is the mod value
+    //int width = 640, height = 480;
+    //int columnWidth = width / 8; // this is the mod value
 
-    unsigned char* image = new unsigned char [width * height * 3]; // this is our image plane
+    //unsigned char* image = new unsigned char [width * height * 3]; // this is our image plane
 
     std::cout << "There are this many cameras in the scene: " << cameras.size() << std::endl;
     int i, j, k;
     for (i = 0; i < cameras.size(); i++){
-        
-    }
+        parser::Camera camera = cameras[i];
+        int width = camera.image_width, height = camera.image_width;
+        unsigned char* image = new unsigned char [width * height * 3];
+        const char* image_name = camera.image_name.c_str();
 
+        for (int y = 0; y < height; ++y){
+            for (int x = 0; x < width; ++x){
+                // looping through each pixel
 
-    // for (int y=0; y < height; y++){
-    //     for (int x=0; x < width; x++){
-            
-    //     }
-    // }
-
-    int i = 0;
-    for (int y = 0; y < height; ++y)
-    {
-        for (int x = 0; x < width; ++x)
-        {
-            int colIdx = x / columnWidth; // this is like a mod operation
-            image[i++] = BAR_COLOR[colIdx][0]; // Red
-            image[i++] = BAR_COLOR[colIdx][1]; // Green
-            image[i++] = BAR_COLOR[colIdx][2]; // Blue
+                // compute the viewing ray
+                // ray eqn: r(t) = e + t*d
+                parser::Vec3f camera_pos = camera.position;
+                parser::Vec3f gaze = camera.gaze;
+                parser::Vec3f up = camera.up;
+                parser::Vec4f near_plane = camera.near_plane;
+                float near_distance = camera.near_distance;
+                
+                
+            }
         }
+
+
+
+        write_ppm(image_name, image, width, height);
     }
-
-    write_ppm("test.ppm", image, width, height); // constructing the image from the image plane
-
 }
