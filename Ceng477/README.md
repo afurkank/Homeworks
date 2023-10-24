@@ -1,1 +1,1 @@
-# Ceng477 homeworks
+# Ceng477 Introduction to Computer Graphics Homeworks
