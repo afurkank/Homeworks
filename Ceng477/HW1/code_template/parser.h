@@ -11,11 +11,54 @@ namespace parser
     struct Vec3f
     {
         float x, y, z;
+
+        int depth;
+
+        Vec3f(): x(0), y(0), z(0), depth(0) {}
+
+        Vec3f(float x, float y, float z): x(x), y(y), z(z), depth(depth) {}
+
+        Vec3f operator*(float scalar) const{
+            return Vec3f(x*scalar, y*scalar, z*scalar);
+        }
+
+        Vec3f operator+(Vec3f vec2) const{
+            return Vec3f(x+vec2.x, y+vec2.y, z+vec2.z);
+        }
+
+        Vec3f& operator+=(const Vec3f& vec2) {
+            x += vec2.x;
+            y += vec2.y;
+            z += vec2.z;
+            return *this;
+        }
+
+        static Vec3f cross(const Vec3f& a, const Vec3f& b) {
+            return Vec3f(
+                a.y * b.z - a.z * b.y,
+                a.z * b.x - a.x * b.z,
+                a.x * b.y - a.y * b.x
+            );
+        }
+
+        Vec3f operator-() const {
+            return Vec3f(-x, -y, -z);
+        }
+    };
+
+    struct hitRecord{
+        // information about the hit point
+        Material material;
     };
 
     struct Vec3i
     {
         int x, y, z;
+
+        Vec3i(): x(0), y(0), z(0) {}
+
+        Vec3i(int x, int y, int z): x(x), y(y), z(z) {}
+
     };
 
     struct Vec4f
