@@ -26,6 +26,14 @@ namespace parser
             return Vec3f(x+vec2.x, y+vec2.y, z+vec2.z);
         }
 
+        Vec3f operator-(Vec3f vec2) const{
+            return Vec3f(x-vec2.x, y-vec2.y, z-vec2.z);
+        }
+
+        Vec3f operator-() const {
+            return Vec3f(-x, -y, -z);
+        }
+
         Vec3f& operator+=(const Vec3f& vec2) {
             x += vec2.x;
             y += vec2.y;
@@ -41,8 +49,8 @@ namespace parser
             );
         }
 
-        Vec3f operator-() const {
-            return Vec3f(-x, -y, -z);
+        float dot(const Vec3f& vec2) const {
+            return x * vec2.x + y * vec2.y + z * vec2.z;
         }
     };
 

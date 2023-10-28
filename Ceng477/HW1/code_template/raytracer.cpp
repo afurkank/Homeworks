@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 #include "parser.h"
 #include "ppm.h"
 
@@ -10,6 +11,19 @@ typedef unsigned char RGB[3];
 //         result += vec1[i] * vec2[i]
 //     }
 // }
+
+parser::Vec3f compute_ray(parser::Vec3f ray, float t){
+    return ray * t;
+}
+
+float compute_determinant(parser::Vec3f vec1, parser::Vec3f vec2, parser::Vec3f vec3){
+    float a = vec1.x, b = vec1.y, c = vec1.z;
+    float d = vec2.x, e = vec2.y, f = vec2.z;
+    float g = vec3.x, h = vec3.y, i = vec3.z;
+
+    float det = a*(e*i - h*f) + b*(g*f - d*i) + c*(d*h - e*g);
+    return det;
+}
 
 parser::Vec3f applyShading(parser::Vec3f ray, parser::hitRecord hitRecord, parser::Scene scene){
     parser::Material material = hitRecord.material;
@@ -43,12 +57,83 @@ bool closestHit(parser::Vec3f ray, int i, int j, parser::hitRecord hitRecord, pa
     float pixel_ij_cam_y = top - (j + 0.5)*pixel_height;
     float pixel_ij_cam_z = -camera.near_distance;
 
-    parser::Vec3f pixel_ij_cam = parser::Vec3f(pixel_ij_cam_x, pixel_ij_cam_y, pixel_ij_cam_z);
-
     parser::Vec3f u = camera.up, w = -camera.gaze;
     parser::Vec3f v = parser::Vec3f::cross(u, w);
 
-    parser::Vec3f pixel_ij_world = camera.position + pixel_ij_cam
+    parser::Vec3f pixel_ij_world = camera.position + 
+    u * pixel_ij_cam_x +
+    v * pixel_ij_cam_y +
+    w * pixel_ij_cam_z;
+
+    parser::Vec3f d = pixel_ij_world - camera.position;
+    parser::Vec3f o = camera.position;
+
+    // iterate through the objects and find if there is an intersection with the
+    // ray equation
+    int i = 0;
+    float t_min = INFINITY;
+    bool flag = false;
+    parser::Sphere sphere;
+    parser::Triangle triangle;
+    for(; i < scene.spheres.size(); i++){
+        // loop through spheres
+        
+        parser::Sphere sphere = scene.spheres[i];
+        int material_id = sphere.material_id;
+        int c_vertex_id = sphere.center_vertex_id;
+        parser::Material material = scene.materials[material_id];
+        // t = (-d.(o-c)-+sqrt((d.(o-c))^2 - (d.d)((o-c).(o-c)-R^2))) / d*d
+
+        float t;
+        parser::Vec3f c = scene.vertex_data[c_vertex_id];
+        
+        float R = sphere.radius;
+        float first_term = (-d).dot(o-c);
+        float second_term = sqrt(pow((d.dot(o-c)), 2) - (d.dot(d)*((o-c).dot(o-c)-pow(R, 2))));
+        float denominator = d.dot(d);
+
+        float t_1 = (first_term + second_term) / denominator;
+        float t_2 = (first_term - second_term) / denominator;
+
+        t = std::min(t_1, t_2);
+
+        if (t < t_min){
+            t_min = t;
+            flag = true;
+        }
+    }
+    for(i = 0; i < scene.triangles.size() && !flag; i++){
+        // loop through triangles
+        triangle = scene.triangles[i];
+        parser::Vec3f triangle_a, triangle_b, triangle_c;
+        triangle_a = scene.vertex_data[triangle.indices.v0_id];
+        triangle_b = scene.vertex_data[triangle.indices.v1_id];
+        triangle_c = scene.vertex_data[triangle.indices.v2_id];
+        
+        float beta, gamma, t, determinant_A;
+
+        determinant_A = compute_determinant(triangle_a - triangle_b, triangle_a - triangle_c, d);
+
+        beta = compute_determinant(triangle_a-o, triangle_a-triangle_c, d);
+        gamma = compute_determinant(triangle_a-triangle_b, triangle_a-o, d);
+        t = compute_determinant(triangle_a-triangle_b, triangle_a-triangle_c, triangle_a-o);
+
+        beta/=determinant_A;
+        gamma/=determinant_A;
+        t/=determinant_A;
+
+        if(t < t_min &&
+        beta + gamma <= 1 &&
+        beta >= 0 &&
+        gamma >= 0){
+            // TODO: check the cosTheta being more than 90 degrees
+            t_min = t;
+            flag = true;
+        }
+    }
+    for(i = 0; i < scene.meshes.size() && !flag; i++){
+        // loop through meshes
+    }
 }
 
 parser::Vec3f computeColor(parser::Vec3f ray, int i, int j, parser::Scene scene){
