@@ -5,18 +5,10 @@
 
 typedef unsigned char RGB[3];
 
-// float dot_product(std::vector<parser::Vec3f> vec1, std::vector<parser::Vec3f> vec2, float cosT){
-//     float result = 0;
-//     for(int i = 0; i < vec1.size(); i++){
-//         result += vec1[i] * vec2[i]
-//     }
-// }
+std::vector<parser::Vec3f> triangle_normals;
 
-parser::Vec3f compute_ray(parser::Vec3f ray, float t){
-    return ray * t;
-}
-
-float compute_determinant(parser::Vec3f vec1, parser::Vec3f vec2, parser::Vec3f vec3){
+float compute_determinant(parser::Vec3f vec1, 
+parser::Vec3f vec2, parser::Vec3f vec3){
     float a = vec1.x, b = vec1.y, c = vec1.z;
     float d = vec2.x, e = vec2.y, f = vec2.z;
     float g = vec3.x, h = vec3.y, i = vec3.z;
@@ -43,9 +35,65 @@ parser::Vec3f o, parser::Vec3f d, parser::Scene scene){
     beta/=determinant_A;
     gamma/=determinant_A;
     t/=determinant_A;
+
+    parser::triangle_ray_intersection_data data;
+
+    data.beta = beta, data.gamma = gamma, data.t = t;
+
+    return data;
 }
 
-parser::Vec3f applyShading(parser::Vec3f ray, parser::hitRecord hitRecord, parser::Scene scene){
+parser::sphere_ray_intersection_data compute_sphere_ray_inter(parser::Sphere sphere,
+parser::Vec3f o, parser::Vec3f d, parser::Scene scene){
+    parser::sphere_ray_intersection_data data;
+    int material_id = sphere.material_id;
+    int c_vertex_id = sphere.center_vertex_id;
+    parser::Material material = scene.materials[material_id];
+    // t = (-d.(o-c)-+sqrt((d.(o-c))^2 - (d.d)((o-c).(o-c)-R^2))) / d*d
+
+    float t;
+    parser::Vec3f c = scene.vertex_data[c_vertex_id];
+    
+    float R = sphere.radius;
+    float first_term = (-d).dot(o-c);
+    float second_term = sqrt(pow((d.dot(o-c)), 2) - (d.dot(d)*((o-c).dot(o-c)-pow(R, 2))));
+    float denominator = d.dot(d);
+
+    float t_1 = (first_term + second_term) / denominator;
+    float t_2 = (first_term - second_term) / denominator;
+
+    t = std::min(t_1, t_2);
+
+    data.t = t;
+
+    return data;
+}
+
+parser::Vec3f get_pixel_ij_world(parser::Scene scene, int x, int y, parser::Camera camera){
+    float pixel_width, pixel_height;
+    parser::Vec4f near_plane = camera.near_plane;
+
+    float left, right, bottom, top;
+    left = near_plane.x, right = near_plane.y, bottom = near_plane.z, top = near_plane.w;
+    pixel_width = (right - left) / camera.image_width;
+    pixel_height = (top - bottom) / camera.image_height;
+
+    float pixel_ij_cam_x = left + (x + 0.5)*pixel_width;
+    float pixel_ij_cam_y = top - (y + 0.5)*pixel_height;
+    float pixel_ij_cam_z = -camera.near_distance;
+
+    parser::Vec3f u = camera.up, w = -camera.gaze;
+    parser::Vec3f v = parser::Vec3f::cross(u, w);
+
+    parser::Vec3f pixel_ij_world = camera.position + 
+    u * pixel_ij_cam_x +
+    v * pixel_ij_cam_y +
+    w * pixel_ij_cam_z;
+
+    return pixel_ij_world;
+}
+
+/* parser::Vec3f applyShading(parser::Vec3f ray, parser::hitRecord hitRecord, parser::Scene scene){
     parser::Material material = hitRecord.material;
     parser::Vec3f ambient_light = scene.ambient_light;
     parser::Vec3f color = ambient_light*(material.ambient);
@@ -62,80 +110,42 @@ parser::Vec3f applyShading(parser::Vec3f ray, parser::hitRecord hitRecord, parse
         }
     }
     return color;
-}
+} */
 
-bool closestHit(parser::Vec3f ray, int i, int j, parser::hitRecord hitRecord, parser::Scene scene, parser::Camera camera){
-    float pixel_width, pixel_height;
-    parser::Vec4f near_plane = camera.near_plane;
-
-    float left, right, bottom, top;
-    left = near_plane.x, right = near_plane.y, bottom = near_plane.z, top = near_plane.w;
-    pixel_width = (right - left) / camera.image_width;
-    pixel_height = (top - bottom) / camera.image_height;
-
-    float pixel_ij_cam_x = left + (i + 0.5)*pixel_width;
-    float pixel_ij_cam_y = top - (j + 0.5)*pixel_height;
-    float pixel_ij_cam_z = -camera.near_distance;
-
-    parser::Vec3f u = camera.up, w = -camera.gaze;
-    parser::Vec3f v = parser::Vec3f::cross(u, w);
-
-    parser::Vec3f pixel_ij_world = camera.position + 
-    u * pixel_ij_cam_x +
-    v * pixel_ij_cam_y +
-    w * pixel_ij_cam_z;
-
+// iterate through the objects and find if there is an intersection with the
+// ray equation
+bool closestHit(parser::Vec3f ray, int x, int y, parser::hitRecord &hitRecord, 
+parser::Scene scene, parser::Camera camera){
+    parser::Vec3f pixel_ij_world = get_pixel_ij_world(scene, x, y, camera);
     parser::Vec3f d = pixel_ij_world - camera.position;
     parser::Vec3f o = camera.position;
-
-    // iterate through the objects and find if there is an intersection with the
-    // ray equation
+    
     int i = 0;
     float t_min = INFINITY;
     bool flag = false;
-    parser::Sphere sphere;
-    parser::Triangle triangle;
+
+    // loop through spheres
     for(; i < scene.spheres.size(); i++){
-        // loop through spheres
-        
         parser::Sphere sphere = scene.spheres[i];
-        int material_id = sphere.material_id;
-        int c_vertex_id = sphere.center_vertex_id;
-        parser::Material material = scene.materials[material_id];
-        // t = (-d.(o-c)-+sqrt((d.(o-c))^2 - (d.d)((o-c).(o-c)-R^2))) / d*d
-
-        float t;
-        parser::Vec3f c = scene.vertex_data[c_vertex_id];
-        
-        float R = sphere.radius;
-        float first_term = (-d).dot(o-c);
-        float second_term = sqrt(pow((d.dot(o-c)), 2) - (d.dot(d)*((o-c).dot(o-c)-pow(R, 2))));
-        float denominator = d.dot(d);
-
-        float t_1 = (first_term + second_term) / denominator;
-        float t_2 = (first_term - second_term) / denominator;
-
-        t = std::min(t_1, t_2);
-
+        parser::sphere_ray_intersection_data data;
+        data = compute_sphere_ray_inter(sphere, o, d, scene);
+        float t = data.t;
         if (t < t_min){
             t_min = t;
             flag = true;
             // TODO: record the hit point
+            break;
         }
     }
+    // loop through triangles
     for(i = 0; i < scene.triangles.size() && !flag; i++){
-        // loop through triangles
-        triangle = scene.triangles[i];
-        
+        parser::Triangle triangle = scene.triangles[i];
         int a, b, c;
         a = triangle.indices.v0_id; b = triangle.indices.v1_id; c = triangle.indices.v2_id;
-
         parser::triangle_ray_intersection_data data = compute_tri_ray_inter(
             a, b, c, o, d, scene
         );
-
         float beta = data.beta, gamma = data.gamma, t = data.t;
-
         if(t < t_min &&
         beta + gamma <= 1 &&
         beta >= 0 &&
@@ -144,24 +154,32 @@ bool closestHit(parser::Vec3f ray, int i, int j, parser::hitRecord hitRecord, pa
             t_min = t;
             flag = true;
             // TODO: record the hit point
+            break;
         }
     }
+    // loop through meshes
     for(i = 0; i < scene.meshes.size() && !flag; i++){
-        // loop through meshes
         parser::Mesh mesh = scene.meshes[i];
-
         int j = 0;
+
+        // loop through individual faces of the mesh
         for(; j < mesh.faces.size(); j++){
             parser::Face face = mesh.faces[j];
-
             int k = 0;
             bool eq = false;
+
+            // check if we are computing ray interaction twice for a triangle
             for(; k < scene.triangles.size(); k++){
                 parser::Triangle tri = scene.triangles[k];
-                
-                if(tri.indices.v0_id == face.v0_id &&
+                if((tri.indices.v0_id == face.v0_id &&
                 tri.indices.v1_id == face.v1_id &&
-                tri.indices.v2_id == face.v2_id){
+                tri.indices.v2_id == face.v2_id) ||
+                (tri.indices.v0_id == face.v1_id &&
+                tri.indices.v1_id == face.v2_id &&
+                tri.indices.v2_id == face.v0_id) ||
+                (tri.indices.v0_id == face.v2_id &&
+                tri.indices.v1_id == face.v0_id &&
+                tri.indices.v2_id == face.v1_id)){
                     eq = true;
                     break;
                 }
@@ -169,16 +187,12 @@ bool closestHit(parser::Vec3f ray, int i, int j, parser::hitRecord hitRecord, pa
             if(eq) continue;
             else{
                 parser::triangle_ray_intersection_data data;
-
                 int a, b, c;
                 a = face.v0_id; b = face.v1_id; c = face.v2_id;
-
                 data = compute_tri_ray_inter(
                     a, b, c, o, d, scene
                 );
-
                 float beta = data.beta, gamma = data.gamma, t = data.t;
-
                 if(t < t_min &&
                 beta + gamma <= 1 &&
                 beta >= 0 &&
@@ -187,17 +201,20 @@ bool closestHit(parser::Vec3f ray, int i, int j, parser::hitRecord hitRecord, pa
                     t_min = t;
                     flag = true;
                     // TODO: record the hit point
+                    break;
                 }
             }
         }
     }
 }
 
-parser::Vec3f computeColor(parser::Vec3f ray, int i, int j, parser::Scene scene){
+parser::Vec3f computeColor(parser::Vec3f ray, int x, int y, 
+parser::Scene scene, parser::Camera camera){
+    parser::hitRecord hitRecord;
     if (ray.depth > scene.max_recursion_depth){
         return parser::Vec3f();
     }
-    else if(closestHit(ray, i, j, hitRecord, scene)){
+    else if(closestHit(ray, x, y, hitRecord, scene, camera)){
         return applyShading(ray, hitRecord);
     }
     else if(ray.depth == 0){
@@ -228,6 +245,21 @@ int main(int argc, char* argv[])
 
     std::cout << "There are this many cameras in the scene: " << cameras.size() << std::endl;
     int i, k;
+    
+    for(i=0; i < triangles.size(); i++){
+        parser::Triangle triangle = triangles[i];
+        
+        parser::Vec3f vec1, vec2;
+        std::vector<parser::Vec3f> vertices = scene.vertex_data;
+        int a, b, c;
+        a = triangle.indices.v0_id; b = triangle.indices.v1_id; c = triangle.indices.v2_id;
+        // n = (c - b) x (a - b)
+        parser::Vec3f normal;
+        normal = parser::Vec3f::cross((vertices[c] - vertices[b]),(vertices[a] - vertices[b]));
+        
+        triangle_normals.push_back(normal);
+    }
+    
     for (i = 0; i < cameras.size(); i++){
         parser::Camera camera = cameras[i];
         int width = camera.image_width, height = camera.image_width;
@@ -253,7 +285,7 @@ int main(int argc, char* argv[])
 
                 parser::Vec3f ray = e + t*d;
                 ray.depth = 0;
-                parser::Vec3f color = computeColor(ray, scene);
+                parser::Vec3f color = computeColor(ray, x, y, scene, camera);
                 // convert color from float to integer
                 // and clamp it to be in-between (0,255)
                 parser::Vec3i clamped_color; // = clamp(color)

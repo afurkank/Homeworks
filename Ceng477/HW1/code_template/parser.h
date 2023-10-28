@@ -56,7 +56,11 @@ namespace parser
 
     struct hitRecord{
         // information about the hit point
-        Material material;
+        int material_id;
+
+        Vec3f surface_normal;
+
+        hitRecord(): material_id(0), surface_normal(Vec3f()) {}
     };
 
     struct Vec3i
@@ -127,6 +131,14 @@ namespace parser
     {
         int material_id;
         Face indices;
+    };
+
+    struct sphere_ray_intersection_data{
+        float t;
+
+        sphere_ray_intersection_data(): t(0) {}
+
+        sphere_ray_intersection_data(float t): t(t) {}
     };
 
     struct Sphere
