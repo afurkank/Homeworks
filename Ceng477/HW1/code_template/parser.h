@@ -114,6 +114,15 @@ namespace parser
         std::vector<Face> faces;
     };
 
+    struct triangle_ray_intersection_data{
+        float beta, gamma, t;
+
+        triangle_ray_intersection_data(): beta(0), gamma(0), t(0) {}
+
+        triangle_ray_intersection_data(float beta,
+        float gamma, float t): beta(beta), gamma(gamma), t(t) {}
+    };
+
     struct Triangle
     {
         int material_id;

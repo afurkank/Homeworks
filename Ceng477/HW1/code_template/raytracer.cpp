@@ -25,6 +25,26 @@ float compute_determinant(parser::Vec3f vec1, parser::Vec3f vec2, parser::Vec3f 
     return det;
 }
 
+parser::triangle_ray_intersection_data compute_tri_ray_inter(int a, int b, int c,
+parser::Vec3f o, parser::Vec3f d, parser::Scene scene){
+    parser::Vec3f triangle_a, triangle_b, triangle_c;
+    triangle_a = scene.vertex_data[a];
+    triangle_b = scene.vertex_data[b];
+    triangle_c = scene.vertex_data[c];
+    
+    float beta, gamma, t, determinant_A;
+
+    determinant_A = compute_determinant(triangle_a - triangle_b, triangle_a - triangle_c, d);
+
+    beta = compute_determinant(triangle_a-o, triangle_a-triangle_c, d);
+    gamma = compute_determinant(triangle_a-triangle_b, triangle_a-o, d);
+    t = compute_determinant(triangle_a-triangle_b, triangle_a-triangle_c, triangle_a-o);
+
+    beta/=determinant_A;
+    gamma/=determinant_A;
+    t/=determinant_A;
+}
+
 parser::Vec3f applyShading(parser::Vec3f ray, parser::hitRecord hitRecord, parser::Scene scene){
     parser::Material material = hitRecord.material;
     parser::Vec3f ambient_light = scene.ambient_light;
@@ -100,27 +120,21 @@ bool closestHit(parser::Vec3f ray, int i, int j, parser::hitRecord hitRecord, pa
         if (t < t_min){
             t_min = t;
             flag = true;
+            // TODO: record the hit point
         }
     }
     for(i = 0; i < scene.triangles.size() && !flag; i++){
         // loop through triangles
         triangle = scene.triangles[i];
-        parser::Vec3f triangle_a, triangle_b, triangle_c;
-        triangle_a = scene.vertex_data[triangle.indices.v0_id];
-        triangle_b = scene.vertex_data[triangle.indices.v1_id];
-        triangle_c = scene.vertex_data[triangle.indices.v2_id];
         
-        float beta, gamma, t, determinant_A;
+        int a, b, c;
+        a = triangle.indices.v0_id; b = triangle.indices.v1_id; c = triangle.indices.v2_id;
 
-        determinant_A = compute_determinant(triangle_a - triangle_b, triangle_a - triangle_c, d);
+        parser::triangle_ray_intersection_data data = compute_tri_ray_inter(
+            a, b, c, o, d, scene
+        );
 
-        beta = compute_determinant(triangle_a-o, triangle_a-triangle_c, d);
-        gamma = compute_determinant(triangle_a-triangle_b, triangle_a-o, d);
-        t = compute_determinant(triangle_a-triangle_b, triangle_a-triangle_c, triangle_a-o);
-
-        beta/=determinant_A;
-        gamma/=determinant_A;
-        t/=determinant_A;
+        float beta = data.beta, gamma = data.gamma, t = data.t;
 
         if(t < t_min &&
         beta + gamma <= 1 &&
@@ -129,10 +143,53 @@ bool closestHit(parser::Vec3f ray, int i, int j, parser::hitRecord hitRecord, pa
             // TODO: check the cosTheta being more than 90 degrees
             t_min = t;
             flag = true;
+            // TODO: record the hit point
         }
     }
     for(i = 0; i < scene.meshes.size() && !flag; i++){
         // loop through meshes
+        parser::Mesh mesh = scene.meshes[i];
+
+        int j = 0;
+        for(; j < mesh.faces.size(); j++){
+            parser::Face face = mesh.faces[j];
+
+            int k = 0;
+            bool eq = false;
+            for(; k < scene.triangles.size(); k++){
+                parser::Triangle tri = scene.triangles[k];
+                
+                if(tri.indices.v0_id == face.v0_id &&
+                tri.indices.v1_id == face.v1_id &&
+                tri.indices.v2_id == face.v2_id){
+                    eq = true;
+                    break;
+                }
+            }
+            if(eq) continue;
+            else{
+                parser::triangle_ray_intersection_data data;
+
+                int a, b, c;
+                a = face.v0_id; b = face.v1_id; c = face.v2_id;
+
+                data = compute_tri_ray_inter(
+                    a, b, c, o, d, scene
+                );
+
+                float beta = data.beta, gamma = data.gamma, t = data.t;
+
+                if(t < t_min &&
+                beta + gamma <= 1 &&
+                beta >= 0 &&
+                gamma >= 0){
+                    // TODO: check the cosTheta being more than 90 degrees
+                    t_min = t;
+                    flag = true;
+                    // TODO: record the hit point
+                }
+            }
+        }
     }
 }
 
