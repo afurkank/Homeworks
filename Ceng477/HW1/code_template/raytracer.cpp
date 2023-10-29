@@ -5,10 +5,18 @@
 #include <pthread.h>
 #include <limits>
 #include <algorithm>
+#include <set>
 
 typedef unsigned char RGB[3];
 
 std::vector<parser::Vec3f> triangle_normals;
+std::set<std::string> processedFaces;
+
+std::string createFaceId(const parser::Face& face) {
+    return std::to_string(face.v0_id) + "-" +
+            std::to_string(face.v1_id) + "-" +
+            std::to_string(face.v2_id);
+}
 
 float compute_determinant(parser::Vec3f vec1, 
 parser::Vec3f vec2, parser::Vec3f vec3){
@@ -70,7 +78,7 @@ parser::Vec3f o, parser::Vec3f d, parser::Scene scene){
         return data;
     }
 
-    float discriminant = sqrt(discriminant);
+    discriminant = sqrt(discriminant);
     float denominator = d.dot(d);
 
     float t_1 = (first_term + discriminant) / denominator;
@@ -125,12 +133,11 @@ parser::Scene scene, parser::Camera camera){
     parser::Vec3f d = (pixel_ij_world - camera.position).normalize();
     parser::Vec3f o = camera.position;
     
-    int i = 0;
     float t_min = INFINITY;
     bool flag = false;
 
     // loop through spheres
-    for(; i < scene.spheres.size(); i++){
+    for(int i = 0; i < scene.spheres.size(); i++){
         parser::Sphere sphere = scene.spheres[i];
         parser::Vec3f c = scene.vertex_data[sphere.center_vertex_id];
         parser::sphere_ray_intersection_data data;
@@ -152,7 +159,7 @@ parser::Scene scene, parser::Camera camera){
         }
     }
     // loop through triangles
-    for(i = 0; i < scene.triangles.size() && !flag; i++){
+    for(int i = 0; i < scene.triangles.size() && !flag; i++){
         parser::Triangle triangle = scene.triangles[i];
         int a, b, c;
         a = triangle.indices.v0_id; b = triangle.indices.v1_id; c = triangle.indices.v2_id;
@@ -177,61 +184,44 @@ parser::Scene scene, parser::Camera camera){
         }
     }
     // loop through meshes
-    for(i = 0; i < scene.meshes.size() && !flag; i++){
-        parser::Mesh mesh = scene.meshes[i];
-        int j = 0;
-
+    for(int i = 0; i < scene.meshes.size() && !flag; i++){
+        const parser::Mesh& mesh = scene.meshes[i];
+        
         // loop through individual faces of the mesh
-        for(; j < mesh.faces.size(); j++){
-            parser::Face face = mesh.faces[j];
+        for(int j = 0; j < mesh.faces.size(); j++){
+            const parser::Face& face = mesh.faces[j];
             int k = 0;
             bool eq = false;
 
             // check if we are computing ray interaction twice for a triangle
-            for(; k < scene.triangles.size(); k++){
-                parser::Triangle tri = scene.triangles[k];
-                if((tri.indices.v0_id == face.v0_id &&
-                tri.indices.v1_id == face.v1_id &&
-                tri.indices.v2_id == face.v2_id) ||
-                (tri.indices.v0_id == face.v1_id &&
-                tri.indices.v1_id == face.v2_id &&
-                tri.indices.v2_id == face.v0_id) ||
-                (tri.indices.v0_id == face.v2_id &&
-                tri.indices.v1_id == face.v0_id &&
-                tri.indices.v2_id == face.v1_id)){
-                    eq = true;
-                    break;
-                }
+            std::string faceId = createFaceId(face);
+            if (processedFaces.find(faceId) != processedFaces.end()) {
+                // We've already processed this face, skip it.
+                continue;
             }
-            if(eq) continue;
-            else{
-                parser::triangle_ray_intersection_data data;
-                int a, b, c;
-                a = face.v0_id; b = face.v1_id; c = face.v2_id;
-                data = compute_tri_ray_inter(
-                    a, b, c, o, d, scene
-                );
-                float beta = data.beta, gamma = data.gamma, t = data.t;
+            parser::triangle_ray_intersection_data data = compute_tri_ray_inter(
+                face.v0_id, face.v1_id, face.v2_id, o, d, scene
+            );
 
-                if(t < t_min && data.hit){
-                    // TODO: check the cosTheta being more than 90 degrees
-                    t_min = t;
-                    flag = true;
-                    // record the hit point
-                    hitRecord.material_id = mesh.material_id;
-                    // calculate normal
-                    std::vector<parser::Vec3f> vertices = scene.vertex_data;
-                    parser::Vec3f normal;
-                    normal = parser::Vec3f::cross((vertices[c] - vertices[b]),(vertices[a] - vertices[b]));
-                    normal = normal.normalize();
-                    hitRecord.n = normal;
-                    // calculate hit point
-                    parser::Vec3f vec_a, vec_b, vec_c;
-                    vec_a = scene.vertex_data[a]; vec_b = scene.vertex_data[b]; vec_c = scene.vertex_data[c];
-                    parser::Vec3f p = vec_a + (vec_b - vec_a) * beta + (vec_c - vec_a) * gamma;
-                    hitRecord.p = p;
-                }
+            if(data.t < t_min && data.hit){
+                // TODO: check the cosTheta being more than 90 degrees
+                t_min = data.t;
+                flag = true;
+                // record the hit point
+                hitRecord.material_id = mesh.material_id;
+                // calculate normal
+                //std::vector<parser::Vec3f> vertices = scene.vertex_data;
+                parser::Vec3f normal;
+                //normal = parser::Vec3f::cross((vertices[c] - vertices[b]),(vertices[a] - vertices[b]));
+                normal = normal.normalize();
+                hitRecord.n = normal;
+                // calculate hit point
+                const parser::Vec3f& p = scene.vertex_data[face.v0_id] +
+                (scene.vertex_data[face.v1_id] - scene.vertex_data[face.v0_id]) * data.beta +
+                (scene.vertex_data[face.v2_id] - scene.vertex_data[face.v0_id]) * data.gamma;
+                hitRecord.p = p;
             }
+            processedFaces.insert(faceId);
         }
     }
     return flag;
