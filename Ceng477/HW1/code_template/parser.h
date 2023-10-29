@@ -1,6 +1,6 @@
 #ifndef __HW1__PARSER__
 #define __HW1__PARSER__
-
+#include <cmath>
 #include <string>
 #include <vector>
 

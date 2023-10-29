@@ -1,7 +1,8 @@
 #include <iostream>
-#include <cmath>
 #include "parser.h"
 #include "ppm.h"
+#include <chrono>
+#include <pthread.h>
 
 typedef unsigned char RGB[3];
 
@@ -91,25 +92,6 @@ parser::Vec3f get_pixel_ij_world(parser::Scene scene, int x, int y, parser::Came
     w * pixel_ij_cam_z;
 
     return pixel_ij_world;
-}
-
-parser::Vec3i applyShading(parser::Vec3f ray, parser::hitRecord hitRecord, parser::Scene scene){
-    //parser::Material material = hitRecord.material;
-    //parser::Vec3f ambient_light = scene.ambient_light;
-    parser::Vec3i color = parser::Vec3i(); //ambient_light*(material.ambient);
-
-    /* if (material.is_mirror){
-        parser::Vec3f reflectionRay = reflect(ray.dir, hitRecord.n);
-        reflectionRay.depth = ray.depth + 1;
-        color += material.mirror * computeColor(reflectionRay, scene);
-    }
-
-    for(int i = 0; i < scene.point_lights.size(); i++){
-        if(!inShadow(hitRecord.x, I)){
-            color += diffuseTerm(hitRecord, I) + specularTerm(hitRecord, I);
-        }
-    } */
-    return color;
 }
 
 // iterate through the objects and find if there is an intersection with the
@@ -238,9 +220,34 @@ parser::Scene scene, parser::Camera camera){
     return flag;
 }
 
+parser::Vec3i applyShading(parser::Vec3f ray, parser::hitRecord hitRecord, parser::Scene scene){
+    //parser::Material material = hitRecord.material;
+    //parser::Vec3f ambient_light = scene.ambient_light;
+    parser::Vec3i color = parser::Vec3i(255, 0, 0); //ambient_light*(material.ambient);
+
+    /* if (material.is_mirror){
+        parser::Vec3f reflectionRay = reflect(ray.dir, hitRecord.n);
+        reflectionRay.depth = ray.depth + 1;
+        color += material.mirror * computeColor(reflectionRay, scene);
+    }
+
+    for(int i = 0; i < scene.point_lights.size(); i++){
+        if(!inShadow(hitRecord.x, I)){
+            color += diffuseTerm(hitRecord, I) + specularTerm(hitRecord, I);
+        }
+    } */
+    return color;
+}
+
 parser::Vec3i computeColor(parser::Vec3f ray, int x, int y, 
 parser::Scene scene, parser::Camera camera){
     parser::hitRecord hitRecord;
+    if(closestHit(ray, x, y, hitRecord, scene, camera)){
+        // if there is a hit
+        return applyShading(ray, hitRecord, scene);
+    }
+    else return parser::Vec3i();
+    /* parser::hitRecord hitRecord;
     if (ray.depth > scene.max_recursion_depth){
         // if the recursion limit is reached
         return parser::Vec3i(); // returns (0,0,0)
@@ -256,30 +263,19 @@ parser::Scene scene, parser::Camera camera){
     else{
         // there is no hit and the ray is reflected from a surface
         return parser::Vec3i(); // returns (0,0,0)
-    }
+    } */
 }
 
 int main(int argc, char* argv[])
 {
     // Sample usage for reading an XML scene file
     parser::Scene scene;
-
     scene.loadFromXml(argv[1]); // reading the scene(lights, objects, etc.)
 
     std::vector<parser::Camera> cameras = scene.cameras;
-    std::vector<parser::Material> materials = scene.materials;
-    std::vector<parser::Mesh> meshes = scene.meshes;
-    std::vector<parser::PointLight> pointLights = scene.point_lights;
-    std::vector<parser::Sphere> spheres = scene.spheres;
     std::vector<parser::Triangle> triangles = scene.triangles;
-    parser::Vec3i background_color = scene.background_color;
-    parser::Vec3f ambient_light = scene.ambient_light;
-    parser::Vec4f vec4f;
-    parser::Face face;
 
-    std::cout << "There are this many cameras in the scene: " << cameras.size() << std::endl;
     int i, k;
-    
     for(i=0; i < triangles.size(); i++){
         parser::Triangle triangle = triangles[i];
         
@@ -295,15 +291,16 @@ int main(int argc, char* argv[])
         
         triangle_normals.push_back(normal);
     }
-    
+
+    auto start = std::chrono::high_resolution_clock::now();
     for (i = 0; i < cameras.size(); i++){
         parser::Camera camera = cameras[i];
-        int width = camera.image_width, height = camera.image_width;
+        int width = camera.image_width, height = camera.image_height;
         unsigned char* image = new unsigned char [width * height * 3];
         const char* image_name = camera.image_name.c_str();
         int j = 0;
-        for (int y = 0; y < height; ++y){
-            for (int x = 0; x < width; ++x){
+        for (int y = 0; y < height; y++){
+            for (int x = 0; x < width; x++){
                 // looping through each pixel
 
                 // compute the viewing ray
@@ -321,15 +318,23 @@ int main(int argc, char* argv[])
 
                 parser::Vec3f ray = e + t*d;
                 ray.depth = 0;
-                parser::Vec3i color = computeColor(ray, x, y, scene, camera);
+
+                parser::Vec3i color = computeColor(ray, x, y, scene, camera); // TODO: seg fault here
+                std::cout << "pixel i,j: "<< x << ", " << y << std::endl;
                 // convert color from float to integer
                 // and clamp it to be in-between (0,255)
                 parser::Vec3i clamped_color = color; // = clamp(color)
-                image[j++] = clamped_color.x; // Red
-                image[j++] = clamped_color.y; // Green
-                image[j++] = clamped_color.z; // Blue
+                image[j++] = (unsigned char)clamped_color.x; // Red
+                image[j++] = (unsigned char)clamped_color.y; // Green
+                image[j++] = (unsigned char)clamped_color.z; // Blue
             }
         }
         write_ppm(image_name, image, width, height);
+        delete image;
     }
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish - start;
+    std::cout << "Elapsed time: " << elapsed.count() << " seconds\n";
+
+    return 0;
 }

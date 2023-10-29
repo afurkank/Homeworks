@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "random": "cpp"
-    }
+        "random": "cpp",
+        "chrono": "cpp"
+    },
+    "C_Cpp.default.compilerPath": "/bin/x86_64-linux-gnu-g++"
 }
