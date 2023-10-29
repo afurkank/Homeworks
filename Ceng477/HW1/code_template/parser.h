@@ -40,14 +40,11 @@ namespace parser
                 a.x * b.y - a.y * b.x
             );
         }
-        float length() const{
-            return sqrt(x*x + y*y + z*z);
-        }
         float dot(const Vec3f& vec2) const {
             return x * vec2.x + y * vec2.y + z * vec2.z;
         }
-        Vec3f convert_to_unit() const{
-            float len = length();
+        Vec3f normalize() const{
+            float len = sqrt(x*x + y*y + z*z);
             if(len == 0) return Vec3f();
             else{
                 return Vec3f(x/len, y/len, z/len);
@@ -121,11 +118,12 @@ namespace parser
 
     struct triangle_ray_intersection_data{
         float beta, gamma, t;
+        bool hit;
 
-        triangle_ray_intersection_data(): beta(0), gamma(0), t(0) {}
+        triangle_ray_intersection_data(): beta(0), gamma(0), t(0), hit(false) {}
 
         triangle_ray_intersection_data(float beta,
-        float gamma, float t): beta(beta), gamma(gamma), t(t) {}
+        float gamma, float t, bool hit): beta(beta), gamma(gamma), t(t), hit(hit) {}
     };
 
     struct Triangle
@@ -136,10 +134,11 @@ namespace parser
 
     struct sphere_ray_intersection_data{
         float t;
+        bool hit;
 
-        sphere_ray_intersection_data(): t(0) {}
+        sphere_ray_intersection_data(): t(0), hit(false) {}
 
-        sphere_ray_intersection_data(float t): t(t) {}
+        sphere_ray_intersection_data(float t, bool hit): t(t), hit(hit) {}
     };
 
     struct Sphere

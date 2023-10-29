@@ -3,6 +3,8 @@
 #include "ppm.h"
 #include <chrono>
 #include <pthread.h>
+#include <limits>
+#include <algorithm>
 
 typedef unsigned char RGB[3];
 
@@ -25,21 +27,27 @@ parser::Vec3f o, parser::Vec3f d, parser::Scene scene){
     triangle_b = scene.vertex_data[b];
     triangle_c = scene.vertex_data[c];
     
-    float beta, gamma, t, determinant_A;
-
-    determinant_A = compute_determinant(triangle_a - triangle_b, triangle_a - triangle_c, d);
-
-    beta = compute_determinant(triangle_a-o, triangle_a-triangle_c, d);
-    gamma = compute_determinant(triangle_a-triangle_b, triangle_a-o, d);
-    t = compute_determinant(triangle_a-triangle_b, triangle_a-triangle_c, triangle_a-o);
-
-    beta/=determinant_A;
-    gamma/=determinant_A;
-    t/=determinant_A;
-
     parser::triangle_ray_intersection_data data;
 
-    data.beta = beta, data.gamma = gamma, data.t = t;
+    float determinant_A = compute_determinant(triangle_a - triangle_b, triangle_a - triangle_c, d);
+
+    if(std::abs(determinant_A) < std::numeric_limits<float>::epsilon()){
+        data.hit = false;
+        return data;
+    }
+
+    float beta = compute_determinant(triangle_a-o, triangle_a-triangle_c, d) / determinant_A;
+    float gamma = compute_determinant(triangle_a-triangle_b, triangle_a-o, d) / determinant_A;
+    float t = compute_determinant(triangle_a-triangle_b, triangle_a-triangle_c, triangle_a-o) / determinant_A;
+
+    if (beta >= 0.0f && gamma >= 0.0f && (beta + gamma) <= 1.0f) {
+        data.hit = true;
+        data.beta = beta;
+        data.gamma = gamma;
+        data.t = t;
+    } else {
+        data.hit = false;
+    }
 
     return data;
 }
@@ -47,25 +55,39 @@ parser::Vec3f o, parser::Vec3f d, parser::Scene scene){
 parser::sphere_ray_intersection_data compute_sphere_ray_inter(parser::Sphere sphere,
 parser::Vec3f o, parser::Vec3f d, parser::Scene scene){
     parser::sphere_ray_intersection_data data;
-    int material_id = sphere.material_id;
     int c_vertex_id = sphere.center_vertex_id;
-    parser::Material material = scene.materials[material_id];
     // t = (-d.(o-c)-+sqrt((d.(o-c))^2 - (d.d)((o-c).(o-c)-R^2))) / d*d
-
     float t;
     parser::Vec3f c = scene.vertex_data[c_vertex_id];
     
     float R = sphere.radius;
-    float first_term = (-d).dot(o-c);
-    float second_term = sqrt(pow((d.dot(o-c)), 2) - (d.dot(d)*((o-c).dot(o-c)-pow(R, 2))));
+    parser::Vec3f o_c = o - c;
+    float first_term = (-d).dot(o_c);
+    float discriminant = pow(d.dot(o_c), 2) - (d.dot(d) * (o_c.dot(o_c) - pow(R, 2)));
+
+    if (discriminant < 0) {
+        data.hit = false;
+        return data;
+    }
+
+    float discriminant = sqrt(discriminant);
     float denominator = d.dot(d);
 
-    float t_1 = (first_term + second_term) / denominator;
-    float t_2 = (first_term - second_term) / denominator;
+    float t_1 = (first_term + discriminant) / denominator;
+    float t_2 = (first_term - discriminant) / denominator;
 
-    t = std::min(t_1, t_2);
-
-    data.t = t;
+    if (t_1 > 0 && t_2 > 0) {
+        data.t = std::min(t_1, t_2);
+        data.hit = true;
+    } else if (t_1 > 0) {
+        data.t = t_1;
+        data.hit = true;
+    } else if (t_2 > 0) {
+        data.t = t_2;
+        data.hit = true;
+    } else {
+        data.hit = false;
+    }
 
     return data;
 }
@@ -83,12 +105,13 @@ parser::Vec3f get_pixel_ij_world(parser::Scene scene, int x, int y, parser::Came
     float pixel_ij_cam_y = top - (y + 0.5)*pixel_height;
     float pixel_ij_cam_z = -camera.near_distance;
 
-    parser::Vec3f u = camera.up, w = -camera.gaze;
-    parser::Vec3f v = parser::Vec3f::cross(u, w);
+    parser::Vec3f w = -camera.gaze.normalize();
+    parser::Vec3f v = camera.up.normalize();
+    parser::Vec3f u = parser::Vec3f::cross(v, w);
 
     parser::Vec3f pixel_ij_world = camera.position + 
     u * pixel_ij_cam_x +
-    v * pixel_ij_cam_y +
+    v * pixel_ij_cam_y -
     w * pixel_ij_cam_z;
 
     return pixel_ij_world;
@@ -99,7 +122,7 @@ parser::Vec3f get_pixel_ij_world(parser::Scene scene, int x, int y, parser::Came
 bool closestHit(parser::Vec3f ray, int x, int y, parser::hitRecord &hitRecord, 
 parser::Scene scene, parser::Camera camera){
     parser::Vec3f pixel_ij_world = get_pixel_ij_world(scene, x, y, camera);
-    parser::Vec3f d = pixel_ij_world - camera.position;
+    parser::Vec3f d = (pixel_ij_world - camera.position).normalize();
     parser::Vec3f o = camera.position;
     
     int i = 0;
@@ -124,7 +147,7 @@ parser::Scene scene, parser::Camera camera){
             // calculate normal
             parser::Vec3f n; // surface normal at the intersection point
             n = p - c;
-            n = n.convert_to_unit();
+            n = n.normalize();
             hitRecord.n = n;
         }
     }
@@ -139,10 +162,7 @@ parser::Scene scene, parser::Camera camera){
         float beta = data.beta, gamma = data.gamma, t = data.t;
         // p(beta, gamma) = vec_a + beta*(vec_b-vec_a) + gamma*(vec_c-vec_a)
 
-        if(t < t_min &&
-        beta + gamma <= 1 &&
-        beta >= 0 &&
-        gamma >= 0){
+        if(t < t_min && data.hit){
             // TODO: check the cosTheta being more than 90 degrees
             t_min = t;
             flag = true;
@@ -193,10 +213,7 @@ parser::Scene scene, parser::Camera camera){
                 );
                 float beta = data.beta, gamma = data.gamma, t = data.t;
 
-                if(t < t_min &&
-                beta + gamma <= 1 &&
-                beta >= 0 &&
-                gamma >= 0){
+                if(t < t_min && data.hit){
                     // TODO: check the cosTheta being more than 90 degrees
                     t_min = t;
                     flag = true;
@@ -206,7 +223,7 @@ parser::Scene scene, parser::Camera camera){
                     std::vector<parser::Vec3f> vertices = scene.vertex_data;
                     parser::Vec3f normal;
                     normal = parser::Vec3f::cross((vertices[c] - vertices[b]),(vertices[a] - vertices[b]));
-                    normal = normal.convert_to_unit();
+                    normal = normal.normalize();
                     hitRecord.n = normal;
                     // calculate hit point
                     parser::Vec3f vec_a, vec_b, vec_c;
@@ -274,26 +291,24 @@ int main(int argc, char* argv[])
 
     std::vector<parser::Camera> cameras = scene.cameras;
     std::vector<parser::Triangle> triangles = scene.triangles;
+    std::vector<parser::Vec3f> vertices = scene.vertex_data;
 
-    int i, k;
-    for(i=0; i < triangles.size(); i++){
-        parser::Triangle triangle = triangles[i];
+    triangle_normals.reserve(triangles.size());
+
+    for (int i = 0; i < triangles.size(); i++) {
+        const parser::Triangle& triangle = triangles[i];
         
-        parser::Vec3f vec1, vec2;
-        std::vector<parser::Vec3f> vertices = scene.vertex_data;
-        int a, b, c;
-        a = triangle.indices.v0_id; b = triangle.indices.v1_id; c = triangle.indices.v2_id;
-        // n = (c - b) x (a - b)
-        parser::Vec3f normal;
-        normal = parser::Vec3f::cross((vertices[c] - vertices[b]),(vertices[a] - vertices[b]));
+        const int a = triangle.indices.v0_id;
+        const int b = triangle.indices.v1_id;
+        const int c = triangle.indices.v2_id;
 
-        normal = normal.convert_to_unit();
+        parser::Vec3f normal = parser::Vec3f::cross(vertices[c] - vertices[b], vertices[a] - vertices[b]).normalize();
         
         triangle_normals.push_back(normal);
     }
 
     auto start = std::chrono::high_resolution_clock::now();
-    for (i = 0; i < cameras.size(); i++){
+    for (int i = 0; i < cameras.size(); i++){
         parser::Camera camera = cameras[i];
         int width = camera.image_width, height = camera.image_height;
         unsigned char* image = new unsigned char [width * height * 3];
