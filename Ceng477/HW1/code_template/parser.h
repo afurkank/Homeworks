@@ -11,36 +11,28 @@ namespace parser
     struct Vec3f
     {
         float x, y, z;
-
         int depth;
 
         Vec3f(): x(0), y(0), z(0), depth(0) {}
-
         Vec3f(float x, float y, float z): x(x), y(y), z(z), depth(depth) {}
-
         Vec3f operator*(float scalar) const{
             return Vec3f(x*scalar, y*scalar, z*scalar);
         }
-
         Vec3f operator+(Vec3f vec2) const{
             return Vec3f(x+vec2.x, y+vec2.y, z+vec2.z);
         }
-
         Vec3f operator-(Vec3f vec2) const{
             return Vec3f(x-vec2.x, y-vec2.y, z-vec2.z);
         }
-
         Vec3f operator-() const {
             return Vec3f(-x, -y, -z);
         }
-
         Vec3f& operator+=(const Vec3f& vec2) {
             x += vec2.x;
             y += vec2.y;
             z += vec2.z;
             return *this;
         }
-
         static Vec3f cross(const Vec3f& a, const Vec3f& b) {
             return Vec3f(
                 a.y * b.z - a.z * b.y,
@@ -48,19 +40,28 @@ namespace parser
                 a.x * b.y - a.y * b.x
             );
         }
-
+        float length() const{
+            return sqrt(x*x + y*y + z*z);
+        }
         float dot(const Vec3f& vec2) const {
             return x * vec2.x + y * vec2.y + z * vec2.z;
+        }
+        Vec3f convert_to_unit() const{
+            float len = length();
+            if(len == 0) return Vec3f();
+            else{
+                return Vec3f(x/len, y/len, z/len);
+            }
         }
     };
 
     struct hitRecord{
         // information about the hit point
         int material_id;
+        Vec3f n, p; // surface normal, intersection point
 
-        Vec3f surface_normal;
-
-        hitRecord(): material_id(0), surface_normal(Vec3f()) {}
+        hitRecord(): material_id(0), 
+        n(Vec3f()), p(Vec3f()) {}
     };
 
     struct Vec3i
