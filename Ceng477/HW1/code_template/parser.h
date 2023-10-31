@@ -8,6 +8,7 @@
 #include <limits>
 #include <algorithm>
 #include <set>
+#include <iostream>
 
 namespace parser
 {
@@ -89,6 +90,19 @@ namespace parser
         hitRecord(): material_id(0), 
         n(Vec3f()), p(Vec3f()) {}
     };
+
+    /* std::ostream& operator<<(std::ostream& out, const hitRecord& record) {
+        out << "Hit Record:" << std::endl;
+        out << "Material ID: " << record.material_id << std::endl;
+        out << "Surface Normal (n): (" << record.n.x << ", " << record.n.y << ", " << record.n.z << ")" << std::endl;
+        out << "Intersection Point (p): (" << record.p.x << ", " << record.p.y << ", " << record.p.z << ")" << std::endl;
+        return out;
+    } */
+
+    /* std::ostream& operator<<(std::ostream& out, const Vec3f& vec) {
+        out << "Vec3f: (" << vec.x << ", " << vec.y << ", " << vec.z << ", Depth: " << vec.depth << ")";
+        return out;
+    } */
 
     struct triangle_ray_intersection_data{
         float beta, gamma, t;

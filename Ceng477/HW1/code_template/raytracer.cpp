@@ -1,4 +1,3 @@
-#include <iostream>
 #include "parser.h"
 #include "ppm.h"
 
@@ -174,12 +173,6 @@ bool closestHit(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *s
             int k = 0;
             bool eq = false;
 
-            // check if we are computing ray interaction twice for a triangle
-            /* std::string faceId = createFaceId(face);
-            if (processedFaces.find(faceId) != processedFaces.end()) {
-                // We've already processed this face, skip it.
-                continue;
-            } */
             parser::triangle_ray_intersection_data data = compute_tri_ray_inter(
                 face.v0_id, face.v1_id, face.v2_id, o, d, scene
             );
@@ -191,10 +184,12 @@ bool closestHit(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *s
                 // record the hit point
                 hitRecord->material_id = mesh.material_id;
                 // calculate normal
-                //std::vector<parser::Vec3f> vertices = scene.vertex_data;
+                parser::Vec3f a, b, c;
+                a = scene->vertex_data[face.v0_id];
+                b = scene->vertex_data[face.v1_id];
+                c = scene->vertex_data[face.v2_id];
                 parser::Vec3f normal;
-                //normal = parser::Vec3f::cross((vertices[c] - vertices[b]),(vertices[a] - vertices[b]));
-                normal = normal.normalize();
+                normal = parser::Vec3f::cross((c - b),(a - b)).normalize();
                 hitRecord->n = normal;
                 // calculate hit point
                 const parser::Vec3f& p = scene->vertex_data[face.v0_id] +
@@ -208,9 +203,14 @@ bool closestHit(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *s
     return flag;
 }
 
-parser::Vec3f applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *scene){
+parser::Vec3i applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *scene){
     parser::Material material = scene->materials[hitRecord->material_id];
-    parser::Vec3f color = scene->ambient_light * (material.ambient);
+    parser::Vec3f color;
+    // add ambient term
+    // L_a(x, w_o) = k_a * I_a
+    parser::Vec3f k_a = material.ambient;
+    parser::Vec3f I_a = scene->ambient_light;
+    color += k_a * I_a;
 
     // Mirror reflection
     /* if (material.is_mirror) {
@@ -242,28 +242,24 @@ parser::Vec3f applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parse
 
         color += L_d;
 
-        // add ambient term
-        // L_a(x, w_o) = k_a * I_a
-        parser::Vec3f k_a = material.ambient;
-        parser::Vec3f I_a = point_light.intensity;
-
-        parser::Vec3f L_a = k_a * I_a;
-
-        color += L_a;
-
         // add specular shading
-        // 
+        //
     }
-    return color;
+    // clamp color
+    parser::Vec3i clamped_color;
+    clamped_color.x = std::min(std::max(color.x, 0.0f), 255.0f);
+    clamped_color.y = std::min(std::max(color.y, 0.0f), 255.0f);
+    clamped_color.z = std::min(std::max(color.z, 0.0f), 255.0f);
+    return clamped_color;
 }
 
-parser::Vec3f computeColor(parser::Ray *ray, parser::Scene *scene){
+parser::Vec3i computeColor(parser::Ray *ray, parser::Scene *scene){
     parser::hitRecord hitRecord;
     if(closestHit(ray, &hitRecord, scene)){
         // if there is a hit
         return applyShading(ray, &hitRecord, scene);
     }
-    else return parser::Vec3f();
+    else return scene->background_color;
     /* parser::hitRecord hitRecord;
     if (ray.depth > scene.max_recursion_depth){
         // if the recursion limit is reached
@@ -284,7 +280,7 @@ parser::Vec3f computeColor(parser::Ray *ray, parser::Scene *scene){
 }
 
 parser::Ray computeRay(int x, int y, parser::Camera *camera, parser::Scene *scene){
-    parser::Vec3f u = parser::Vec3f::cross(-camera->gaze, camera->up).normalize();
+    parser::Vec3f u = parser::Vec3f::cross(camera->gaze, camera->up).normalize();
     parser::Vec3f v = -camera->up; // if i dont put minus here, the character is upside down lol
 
     // Center of the near plane
@@ -346,7 +342,7 @@ void* render_thread(void* arg) {
             // Compute color for the ray
             //std::cout << "computeRay successfully called" << std::endl;
             parser::Vec3i color = computeColor(&ray, scene); // computeColor should be thread-safe
-
+            
             // The index in the image array needs to consider the width of the image
             int index = (y * data->width + x) * 3;
             //std::cout << "index: " << index << std::endl;

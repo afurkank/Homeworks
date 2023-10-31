@@ -35,7 +35,7 @@
 	</Cameras>
 	<Lights>
 		<AmbientLight>
-			0 0 0
+			33 33 33
 		</AmbientLight>
 		<PointLight id="1">
 			<Position>
