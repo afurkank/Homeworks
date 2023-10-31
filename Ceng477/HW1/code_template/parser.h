@@ -3,6 +3,11 @@
 #include <cmath>
 #include <string>
 #include <vector>
+#include <chrono>
+#include <pthread.h>
+#include <limits>
+#include <algorithm>
+#include <set>
 
 namespace parser
 {
@@ -18,6 +23,9 @@ namespace parser
         Vec3f operator*(float scalar) const{
             return Vec3f(x*scalar, y*scalar, z*scalar);
         }
+        Vec3f operator*(int scalar) const{
+            return Vec3f(x*scalar, y*scalar, z*scalar);
+        }
         Vec3f operator+(Vec3f vec2) const{
             return Vec3f(x+vec2.x, y+vec2.y, z+vec2.z);
         }
@@ -27,11 +35,24 @@ namespace parser
         Vec3f operator-() const {
             return Vec3f(-x, -y, -z);
         }
+        Vec3f operator*(Vec3f &vec2) const{
+            return Vec3f(x*vec2.x, y*vec2.y, z*vec2.z);
+        }
+        Vec3f operator/(float scalar) const{
+            return Vec3f(x/scalar, y/scalar, z/scalar);
+        }
         Vec3f& operator+=(const Vec3f& vec2) {
             x += vec2.x;
             y += vec2.y;
             z += vec2.z;
             return *this;
+        }
+        static float distance(const Vec3f& a, const Vec3f& b){
+            float d_x = a.x-b.x;
+            float d_y = a.y-b.y;
+            float d_z = a.z-b.z;
+
+            return sqrt(d_x * d_x + d_y * d_y + d_z * d_z);
         }
         static Vec3f cross(const Vec3f& a, const Vec3f& b) {
             return Vec3f(
@@ -52,6 +73,14 @@ namespace parser
         }
     };
 
+    struct Ray{
+        Vec3f origin, direction;
+        int depth;
+
+        Ray(): origin(Vec3f()), direction(Vec3f()), depth(0) {}
+        Ray(Vec3f o, Vec3f d, int depth): origin(o), direction(d), depth(depth) {}
+    };
+
     struct hitRecord{
         // information about the hit point
         int material_id;
@@ -60,6 +89,25 @@ namespace parser
         hitRecord(): material_id(0), 
         n(Vec3f()), p(Vec3f()) {}
     };
+
+    struct triangle_ray_intersection_data{
+        float beta, gamma, t;
+        bool hit;
+
+        triangle_ray_intersection_data(): beta(0), gamma(0), t(0), hit(false) {}
+
+        triangle_ray_intersection_data(float beta,
+        float gamma, float t, bool hit): beta(beta), gamma(gamma), t(t), hit(hit) {}
+    };
+
+    struct sphere_ray_intersection_data{
+        float t;
+        bool hit;
+
+        sphere_ray_intersection_data(): t(0), hit(false) {}
+
+        sphere_ray_intersection_data(float t, bool hit): t(t), hit(hit) {}
+    };    
 
     struct Vec3i
     {
@@ -116,29 +164,10 @@ namespace parser
         std::vector<Face> faces;
     };
 
-    struct triangle_ray_intersection_data{
-        float beta, gamma, t;
-        bool hit;
-
-        triangle_ray_intersection_data(): beta(0), gamma(0), t(0), hit(false) {}
-
-        triangle_ray_intersection_data(float beta,
-        float gamma, float t, bool hit): beta(beta), gamma(gamma), t(t), hit(hit) {}
-    };
-
     struct Triangle
     {
         int material_id;
         Face indices;
-    };
-
-    struct sphere_ray_intersection_data{
-        float t;
-        bool hit;
-
-        sphere_ray_intersection_data(): t(0), hit(false) {}
-
-        sphere_ray_intersection_data(float t, bool hit): t(t), hit(hit) {}
     };
 
     struct Sphere
@@ -165,6 +194,16 @@ namespace parser
 
         //Functions
         void loadFromXml(const std::string &filepath);
+    };
+
+    struct ThreadData {
+        int startRow;
+        int endRow;
+        int width;
+        int height;
+        unsigned char* image;
+        Scene* scene;
+        Camera* camera;
     };
 }
 

@@ -1,11 +1,6 @@
 #include <iostream>
 #include "parser.h"
 #include "ppm.h"
-#include <chrono>
-#include <pthread.h>
-#include <limits>
-#include <algorithm>
-#include <set>
 
 typedef unsigned char RGB[3];
 
@@ -29,15 +24,16 @@ parser::Vec3f vec2, parser::Vec3f vec3){
 }
 
 parser::triangle_ray_intersection_data compute_tri_ray_inter(int a, int b, int c,
-parser::Vec3f o, parser::Vec3f d, parser::Scene scene){
+parser::Vec3f o, parser::Vec3f d, parser::Scene *scene){
     parser::Vec3f triangle_a, triangle_b, triangle_c;
-    triangle_a = scene.vertex_data[a];
-    triangle_b = scene.vertex_data[b];
-    triangle_c = scene.vertex_data[c];
+    triangle_a = scene->vertex_data[a];
+    triangle_b = scene->vertex_data[b];
+    triangle_c = scene->vertex_data[c];
     
     parser::triangle_ray_intersection_data data;
 
-    float determinant_A = compute_determinant(triangle_a - triangle_b, triangle_a - triangle_c, d);
+    float determinant_A = compute_determinant(
+        triangle_a - triangle_b, triangle_a - triangle_c, d);
 
     if(std::abs(determinant_A) < std::numeric_limits<float>::epsilon()){
         data.hit = false;
@@ -60,20 +56,21 @@ parser::Vec3f o, parser::Vec3f d, parser::Scene scene){
     return data;
 }
 
-parser::sphere_ray_intersection_data compute_sphere_ray_inter(parser::Sphere sphere,
-parser::Vec3f o, parser::Vec3f d, parser::Scene scene){
+parser::sphere_ray_intersection_data compute_sphere_ray_inter(parser::Sphere *sphere,
+parser::Vec3f o, parser::Vec3f d, parser::Scene *scene){
     parser::sphere_ray_intersection_data data;
-    int c_vertex_id = sphere.center_vertex_id;
+    int c_vertex_id = sphere->center_vertex_id;
     // t = (-d.(o-c)-+sqrt((d.(o-c))^2 - (d.d)((o-c).(o-c)-R^2))) / d*d
     float t;
-    parser::Vec3f c = scene.vertex_data[c_vertex_id];
+    parser::Vec3f c = scene->vertex_data[c_vertex_id];
     
-    float R = sphere.radius;
+    float R = sphere->radius;
     parser::Vec3f o_c = o - c;
     float first_term = (-d).dot(o_c);
     float discriminant = pow(d.dot(o_c), 2) - (d.dot(d) * (o_c.dot(o_c) - pow(R, 2)));
 
     if (discriminant < 0) {
+        // there is no intersection
         data.hit = false;
         return data;
     }
@@ -84,83 +81,66 @@ parser::Vec3f o, parser::Vec3f d, parser::Scene scene){
     float t_1 = (first_term + discriminant) / denominator;
     float t_2 = (first_term - discriminant) / denominator;
 
-    if (t_1 > 0 && t_2 > 0) {
+    if (t_1 > 0 && t_2 > 0){
+        // two intersections
         data.t = std::min(t_1, t_2);
         data.hit = true;
-    } else if (t_1 > 0) {
+    }
+    else if (t_1 > 0){
         data.t = t_1;
         data.hit = true;
-    } else if (t_2 > 0) {
+    }
+    else if (t_2 > 0){
         data.t = t_2;
         data.hit = true;
-    } else {
+    }
+    else{
+        // sphere is behind the camera
         data.hit = false;
     }
 
     return data;
 }
 
-parser::Vec3f get_pixel_ij_world(parser::Scene scene, int x, int y, parser::Camera camera){
-    float pixel_width, pixel_height;
-    parser::Vec4f near_plane = camera.near_plane;
-
-    float left, right, bottom, top;
-    left = near_plane.x, right = near_plane.y, bottom = near_plane.z, top = near_plane.w;
-    pixel_width = (right - left) / camera.image_width;
-    pixel_height = (top - bottom) / camera.image_height;
-
-    float pixel_ij_cam_x = left + (x + 0.5)*pixel_width;
-    float pixel_ij_cam_y = top - (y + 0.5)*pixel_height;
-    float pixel_ij_cam_z = -camera.near_distance;
-
-    parser::Vec3f w = -camera.gaze.normalize();
-    parser::Vec3f v = camera.up.normalize();
-    parser::Vec3f u = parser::Vec3f::cross(v, w);
-
-    parser::Vec3f pixel_ij_world = camera.position + 
-    u * pixel_ij_cam_x +
-    v * pixel_ij_cam_y -
-    w * pixel_ij_cam_z;
-
-    return pixel_ij_world;
-}
-
 // iterate through the objects and find if there is an intersection with the
 // ray equation
-bool closestHit(parser::Vec3f ray, int x, int y, parser::hitRecord &hitRecord, 
-parser::Scene scene, parser::Camera camera){
-    parser::Vec3f pixel_ij_world = get_pixel_ij_world(scene, x, y, camera);
-    parser::Vec3f d = (pixel_ij_world - camera.position).normalize();
-    parser::Vec3f o = camera.position;
+bool closestHit(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *scene){
+    if (!ray || !hitRecord || !scene) {
+        // Handle null pointer error
+        std::cout << "one of the pointers is null" << std::endl;
+        return false;
+    }
+    parser::Vec3f d = ray->direction;
+    parser::Vec3f o = ray->origin;
     
     float t_min = INFINITY;
     bool flag = false;
 
     // loop through spheres
-    for(int i = 0; i < scene.spheres.size(); i++){
-        parser::Sphere sphere = scene.spheres[i];
-        parser::Vec3f c = scene.vertex_data[sphere.center_vertex_id];
+    for(int i = 0; i < scene->spheres.size(); i++){
+        parser::Sphere sphere = scene->spheres[i];
+        parser::Vec3f c = scene->vertex_data[sphere.center_vertex_id];
         parser::sphere_ray_intersection_data data;
-        data = compute_sphere_ray_inter(sphere, o, d, scene);
+        data = compute_sphere_ray_inter(&sphere, o, d, scene);
         float t = data.t;
         if (t < t_min){
             t_min = t;
             flag = true;
-            hitRecord.material_id = sphere.material_id;
+            hitRecord->material_id = sphere.material_id;
             // calculate hit point
             parser::Vec3f p; // intersection point
             p = o + d * t;
-            hitRecord.p = p;
+            hitRecord->p = p;
             // calculate normal
             parser::Vec3f n; // surface normal at the intersection point
             n = p - c;
             n = n.normalize();
-            hitRecord.n = n;
+            hitRecord->n = n;
         }
     }
     // loop through triangles
-    for(int i = 0; i < scene.triangles.size() && !flag; i++){
-        parser::Triangle triangle = scene.triangles[i];
+    for(int i = 0; i < scene->triangles.size() && !flag; i++){
+        parser::Triangle triangle = scene->triangles[i];
         int a, b, c;
         a = triangle.indices.v0_id; b = triangle.indices.v1_id; c = triangle.indices.v2_id;
         parser::triangle_ray_intersection_data data = compute_tri_ray_inter(
@@ -173,19 +153,20 @@ parser::Scene scene, parser::Camera camera){
             // TODO: check the cosTheta being more than 90 degrees
             t_min = t;
             flag = true;
-            hitRecord.material_id = triangle.material_id;
+            hitRecord->material_id = triangle.material_id;
             // get triangle normal
-            hitRecord.n = triangle_normals[i];
+            hitRecord->n = triangle_normals[i];
             // calculate hit point
             parser::Vec3f vec_a, vec_b, vec_c;
-            vec_a = scene.vertex_data[a]; vec_b = scene.vertex_data[b]; vec_c = scene.vertex_data[c];
+            vec_a = scene->vertex_data[a]; vec_b = scene->vertex_data[b]; vec_c = scene->vertex_data[c];
             parser::Vec3f p = vec_a + (vec_b - vec_a) * beta + (vec_c - vec_a) * gamma;
-            hitRecord.p = p;
+            hitRecord->p = p;
         }
     }
+    
     // loop through meshes
-    for(int i = 0; i < scene.meshes.size() && !flag; i++){
-        const parser::Mesh& mesh = scene.meshes[i];
+    for(int i = 0; i < scene->meshes.size() && !flag; i++){
+        const parser::Mesh& mesh = scene->meshes[i];
         
         // loop through individual faces of the mesh
         for(int j = 0; j < mesh.faces.size(); j++){
@@ -194,11 +175,11 @@ parser::Scene scene, parser::Camera camera){
             bool eq = false;
 
             // check if we are computing ray interaction twice for a triangle
-            std::string faceId = createFaceId(face);
+            /* std::string faceId = createFaceId(face);
             if (processedFaces.find(faceId) != processedFaces.end()) {
                 // We've already processed this face, skip it.
                 continue;
-            }
+            } */
             parser::triangle_ray_intersection_data data = compute_tri_ray_inter(
                 face.v0_id, face.v1_id, face.v2_id, o, d, scene
             );
@@ -208,52 +189,81 @@ parser::Scene scene, parser::Camera camera){
                 t_min = data.t;
                 flag = true;
                 // record the hit point
-                hitRecord.material_id = mesh.material_id;
+                hitRecord->material_id = mesh.material_id;
                 // calculate normal
                 //std::vector<parser::Vec3f> vertices = scene.vertex_data;
                 parser::Vec3f normal;
                 //normal = parser::Vec3f::cross((vertices[c] - vertices[b]),(vertices[a] - vertices[b]));
                 normal = normal.normalize();
-                hitRecord.n = normal;
+                hitRecord->n = normal;
                 // calculate hit point
-                const parser::Vec3f& p = scene.vertex_data[face.v0_id] +
-                (scene.vertex_data[face.v1_id] - scene.vertex_data[face.v0_id]) * data.beta +
-                (scene.vertex_data[face.v2_id] - scene.vertex_data[face.v0_id]) * data.gamma;
-                hitRecord.p = p;
+                const parser::Vec3f& p = scene->vertex_data[face.v0_id] +
+                (scene->vertex_data[face.v1_id] - scene->vertex_data[face.v0_id]) * data.beta +
+                (scene->vertex_data[face.v2_id] - scene->vertex_data[face.v0_id]) * data.gamma;
+                hitRecord->p = p;
             }
-            processedFaces.insert(faceId);
+            //processedFaces.insert(faceId);
         }
     }
     return flag;
 }
 
-parser::Vec3i applyShading(parser::Vec3f ray, parser::hitRecord hitRecord, parser::Scene scene){
-    //parser::Material material = hitRecord.material;
-    //parser::Vec3f ambient_light = scene.ambient_light;
-    parser::Vec3i color = parser::Vec3i(255, 0, 0); //ambient_light*(material.ambient);
+parser::Vec3f applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *scene){
+    parser::Material material = scene->materials[hitRecord->material_id];
+    parser::Vec3f color = scene->ambient_light * (material.ambient);
 
-    /* if (material.is_mirror){
-        parser::Vec3f reflectionRay = reflect(ray.dir, hitRecord.n);
-        reflectionRay.depth = ray.depth + 1;
-        color += material.mirror * computeColor(reflectionRay, scene);
-    }
-
-    for(int i = 0; i < scene.point_lights.size(); i++){
-        if(!inShadow(hitRecord.x, I)){
-            color += diffuseTerm(hitRecord, I) + specularTerm(hitRecord, I);
-        }
+    // Mirror reflection
+    /* if (material.is_mirror) {
+        parser::Ray reflectionRay;
+        // w_r = -w_o + 2*n*(n . w_o)
+        parser::Vec3f w_o = ray.direction;
+        parser::Vec3f reflected_ray = -w_o + (hitRecord->n)*(hitRecord->n.dot(w_o))*2;
+        reflectionRay.depth += 1;
+        reflectionRay.direction = reflected_ray.normalize();
+        reflectionRay.origin = hitRecord->p;
+        parser::Vec3f reflectionColor = computeColor(&reflectionRay, scene);
+        color += material.mirror * reflectionColor;
     } */
+
+    for(int i = 0; i < scene->point_lights.size(); i++){
+        // add diffuse term
+        // L_d(x, w_o) = k_d * cosTheta * E_i(x, w_i)
+        // cosTheta = max(0, w_i . n)
+        // E_i(x, w_i) = I * r^2
+        parser::PointLight point_light = scene->point_lights[i];
+        parser::Vec3f light_dir = (point_light.position - hitRecord->p).normalize();
+
+        float cosTheta = std::max(0.0f, light_dir.dot(hitRecord->n));
+        parser::Vec3f k_d = material.diffuse;
+        float r = parser::Vec3f::distance(point_light.position, hitRecord->p);
+        parser::Vec3f E_i = point_light.intensity / pow(r, 2);
+
+        parser::Vec3f L_d = E_i * k_d * cosTheta;
+
+        color += L_d;
+
+        // add ambient term
+        // L_a(x, w_o) = k_a * I_a
+        parser::Vec3f k_a = material.ambient;
+        parser::Vec3f I_a = point_light.intensity;
+
+        parser::Vec3f L_a = k_a * I_a;
+
+        color += L_a;
+
+        // add specular shading
+        // 
+    }
     return color;
 }
 
-parser::Vec3i computeColor(parser::Vec3f ray, int x, int y, 
-parser::Scene scene, parser::Camera camera){
+parser::Vec3f computeColor(parser::Ray *ray, parser::Scene *scene){
     parser::hitRecord hitRecord;
-    if(closestHit(ray, x, y, hitRecord, scene, camera)){
+    if(closestHit(ray, &hitRecord, scene)){
         // if there is a hit
-        return applyShading(ray, hitRecord, scene);
+        return applyShading(ray, &hitRecord, scene);
     }
-    else return parser::Vec3i();
+    else return parser::Vec3f();
     /* parser::hitRecord hitRecord;
     if (ray.depth > scene.max_recursion_depth){
         // if the recursion limit is reached
@@ -271,6 +281,85 @@ parser::Scene scene, parser::Camera camera){
         // there is no hit and the ray is reflected from a surface
         return parser::Vec3i(); // returns (0,0,0)
     } */
+}
+
+parser::Ray computeRay(int x, int y, parser::Camera *camera, parser::Scene *scene){
+    parser::Vec3f u = parser::Vec3f::cross(-camera->gaze, camera->up).normalize();
+    parser::Vec3f v = -camera->up; // if i dont put minus here, the character is upside down lol
+
+    // Center of the near plane
+    parser::Vec3f near_center = camera->position + camera->gaze.normalize() * camera->near_distance;
+
+    parser::Vec4f near_plane = camera->near_plane;
+    // Compute the extents of the near plane
+    float l = near_plane.x;
+    float r = near_plane.y;
+    float b = near_plane.z;
+    float t = near_plane.w;
+
+    // Compute the Vectors to the corners of the near plane
+    parser::Vec3f to_left = u * l;
+    parser::Vec3f to_right = u * r;
+    parser::Vec3f to_bottom = v * b;
+    parser::Vec3f to_top = v * t;
+
+    // For each pixel (x, y)
+    float i = l + (r - l) * (x + 0.5) / camera->image_width;
+    float j = b + (t - b) * (y + 0.5) / camera->image_height;
+
+    // Point on the near plane for this pixel
+    parser::Vec3f point_on_plane = near_center + to_right * i + to_top * j;
+
+    // Ray direction
+    parser::Vec3f ray_dir = point_on_plane - camera->position;
+    ray_dir = ray_dir.normalize();
+
+    // Create the ray
+    parser::Ray ray;
+    ray.origin = camera->position;
+    ray.direction = ray_dir;
+    ray.depth = 0;
+
+    return ray;
+}
+
+void* render_thread(void* arg) {
+    // Cast argument to ThreadData pointer
+    parser::ThreadData* data = static_cast<parser::ThreadData*>(arg);
+    parser::Scene* scene = data->scene;
+    parser::Camera* camera = data->camera;
+    unsigned char* image = data->image;
+
+    // Calculate the size of a pixel in the camera space
+    float pixelWidth = (camera->near_plane.x - camera->near_plane.y) / camera->image_width;
+    float pixelHeight = (camera->near_plane.w - camera->near_plane.z) / camera->image_height;
+
+    // Loop over each pixel in the assigned rows
+    for (int y = data->startRow; y < data->endRow; ++y) {
+        for (int x = 0; x < data->width; ++x) {
+            // Convert pixel (x, y) to camera space or world space here as required
+            // and compute the ray from the camera position through the pixel
+            // Here, it's assumed that 'computeRay' is a function that computes the ray for a given pixel
+            //std::cout << "y: " << y << ", " << "x: "<< x << std::endl;
+            parser::Ray ray = computeRay(x, y, camera, scene); // You would need to implement computeRay
+
+            // Compute color for the ray
+            //std::cout << "computeRay successfully called" << std::endl;
+            parser::Vec3i color = computeColor(&ray, scene); // computeColor should be thread-safe
+
+            // The index in the image array needs to consider the width of the image
+            int index = (y * data->width + x) * 3;
+            //std::cout << "index: " << index << std::endl;
+
+            // Set pixel color in image buffer, assuming color values are clamped to 0-255
+
+            image[index] = (unsigned char)(color.x); // Red
+            image[index + 1] = (unsigned char)(color.y); // Green
+            image[index + 2] = (unsigned char)(color.z); // Blue
+        }
+    }
+
+    return nullptr;
 }
 
 int main(int argc, char* argv[])
@@ -296,46 +385,43 @@ int main(int argc, char* argv[])
         
         triangle_normals.push_back(normal);
     }
+    const int num_threads = 256; // or std::thread::hardware_concurrency() to use all hardware threads
+    pthread_t threads[num_threads];
+    parser::ThreadData threadData[num_threads];
 
     auto start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < cameras.size(); i++){
-        parser::Camera camera = cameras[i];
+    for (int i = 0; i < scene.cameras.size(); i++) {
+        parser::Camera& camera = scene.cameras[i];
         int width = camera.image_width, height = camera.image_height;
-        unsigned char* image = new unsigned char [width * height * 3];
-        const char* image_name = camera.image_name.c_str();
-        int j = 0;
-        for (int y = 0; y < height; y++){
-            for (int x = 0; x < width; x++){
-                // looping through each pixel
+        std::cout << "width: " << width << ", height: " << height << std::endl;
+        unsigned char* image = new unsigned char[width * height * 3];
 
-                // compute the viewing ray
-                // ray eqn: r(t) = e + t*d
-                parser::Vec3f camera_pos = camera.position;
-                parser::Vec3f gaze = camera.gaze;
-                parser::Vec3f up = camera.up;
+        // Create threads
+        for (int j = 0; j < num_threads; j++) {
+            threadData[j].startRow = j * height / num_threads;
+            threadData[j].endRow = (j + 1) * height / num_threads;
+            threadData[j].width = width;
+            threadData[j].height = height;
+            threadData[j].image = image;
+            threadData[j].scene = &scene;
+            threadData[j].camera = &camera;
 
-                parser::Vec4f near_plane = camera.near_plane;
-                float near_distance = camera.near_distance;
-                
-                parser::Vec3f e = camera_pos;
-                parser::Vec3f t = camera.gaze;
-                float d = camera.near_distance;
-
-                parser::Vec3f ray = e + t*d;
-                ray.depth = 0;
-
-                parser::Vec3i color = computeColor(ray, x, y, scene, camera); // TODO: seg fault here
-                std::cout << "pixel i,j: "<< x << ", " << y << std::endl;
-                // convert color from float to integer
-                // and clamp it to be in-between (0,255)
-                parser::Vec3i clamped_color = color; // = clamp(color)
-                image[j++] = (unsigned char)clamped_color.x; // Red
-                image[j++] = (unsigned char)clamped_color.y; // Green
-                image[j++] = (unsigned char)clamped_color.z; // Blue
+            if (pthread_create(&threads[j], nullptr, render_thread, (void*)&threadData[j])) {
+                std::cerr << "Error creating thread" << std::endl;
+                return 1;
             }
         }
-        write_ppm(image_name, image, width, height);
-        delete image;
+
+        // Wait for threads to finish
+        for (int j = 0; j < num_threads; j++) {
+            pthread_join(threads[j], nullptr);
+        }
+
+        // Write the image to file
+        write_ppm(camera.image_name.c_str(), image, width, height);
+        
+        // Cleanup
+        delete[] image;
     }
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
