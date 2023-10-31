@@ -14,6 +14,15 @@ namespace parser
 {
     //Notice that all the structures are as simple as possible
     //so that you are not enforced to adopt any style or design.
+    struct Vec3i
+    {
+        int x, y, z;
+
+        Vec3i(): x(0), y(0), z(0) {}
+
+        Vec3i(int x, int y, int z): x(x), y(y), z(z) {}
+
+    };
     struct Vec3f
     {
         float x, y, z;
@@ -26,6 +35,9 @@ namespace parser
         }
         Vec3f operator*(int scalar) const{
             return Vec3f(x*scalar, y*scalar, z*scalar);
+        }
+        Vec3f operator*(Vec3i vec2) const{
+            return Vec3f(x*vec2.x, y*vec2.y, z*vec2.z);
         }
         Vec3f operator+(Vec3f vec2) const{
             return Vec3f(x+vec2.x, y+vec2.y, z+vec2.z);
@@ -65,6 +77,9 @@ namespace parser
         float dot(const Vec3f& vec2) const {
             return x * vec2.x + y * vec2.y + z * vec2.z;
         }
+        float length() const {
+            return sqrt(x*x + y*y + z*z);
+        }
         Vec3f normalize() const{
             float len = sqrt(x*x + y*y + z*z);
             if(len == 0) return Vec3f();
@@ -91,19 +106,6 @@ namespace parser
         n(Vec3f()), p(Vec3f()) {}
     };
 
-    /* std::ostream& operator<<(std::ostream& out, const hitRecord& record) {
-        out << "Hit Record:" << std::endl;
-        out << "Material ID: " << record.material_id << std::endl;
-        out << "Surface Normal (n): (" << record.n.x << ", " << record.n.y << ", " << record.n.z << ")" << std::endl;
-        out << "Intersection Point (p): (" << record.p.x << ", " << record.p.y << ", " << record.p.z << ")" << std::endl;
-        return out;
-    } */
-
-    /* std::ostream& operator<<(std::ostream& out, const Vec3f& vec) {
-        out << "Vec3f: (" << vec.x << ", " << vec.y << ", " << vec.z << ", Depth: " << vec.depth << ")";
-        return out;
-    } */
-
     struct triangle_ray_intersection_data{
         float beta, gamma, t;
         bool hit;
@@ -121,16 +123,6 @@ namespace parser
         sphere_ray_intersection_data(): t(0), hit(false) {}
 
         sphere_ray_intersection_data(float t, bool hit): t(t), hit(hit) {}
-    };    
-
-    struct Vec3i
-    {
-        int x, y, z;
-
-        Vec3i(): x(0), y(0), z(0) {}
-
-        Vec3i(int x, int y, int z): x(x), y(y), z(z) {}
-
     };
 
     struct Vec4f

@@ -1,16 +1,13 @@
 #include "parser.h"
 #include "ppm.h"
 
+parser::Vec3i applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *scene);
+parser::Vec3i computeColor(parser::Ray *ray, parser::Scene *scene);
+
 typedef unsigned char RGB[3];
 
 std::vector<parser::Vec3f> triangle_normals;
 std::set<std::string> processedFaces;
-
-std::string createFaceId(const parser::Face& face) {
-    return std::to_string(face.v0_id) + "-" +
-            std::to_string(face.v1_id) + "-" +
-            std::to_string(face.v2_id);
-}
 
 float compute_determinant(parser::Vec3f vec1, 
 parser::Vec3f vec2, parser::Vec3f vec3){
@@ -105,7 +102,6 @@ parser::Vec3f o, parser::Vec3f d, parser::Scene *scene){
 // ray equation
 bool closestHit(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *scene){
     if (!ray || !hitRecord || !scene) {
-        // Handle null pointer error
         std::cout << "one of the pointers is null" << std::endl;
         return false;
     }
@@ -178,7 +174,6 @@ bool closestHit(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *s
             );
 
             if(data.t < t_min && data.hit){
-                // TODO: check the cosTheta being more than 90 degrees
                 t_min = data.t;
                 flag = true;
                 // record the hit point
@@ -192,15 +187,34 @@ bool closestHit(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *s
                 normal = parser::Vec3f::cross((c - b),(a - b)).normalize();
                 hitRecord->n = normal;
                 // calculate hit point
-                const parser::Vec3f& p = scene->vertex_data[face.v0_id] +
+                parser::Vec3f p = scene->vertex_data[face.v0_id] +
                 (scene->vertex_data[face.v1_id] - scene->vertex_data[face.v0_id]) * data.beta +
                 (scene->vertex_data[face.v2_id] - scene->vertex_data[face.v0_id]) * data.gamma;
                 hitRecord->p = p;
             }
-            //processedFaces.insert(faceId);
         }
     }
     return flag;
+}
+
+parser::Vec3i computeColor(parser::Ray *ray, parser::Scene *scene){
+    if (ray->depth > scene->max_recursion_depth){
+        // if the recursion limit is reached
+        return parser::Vec3i(); // returns (0,0,0)
+    }
+    parser::hitRecord hitRecord;
+    if(closestHit(ray, &hitRecord, scene)){
+        // if there is a hit
+        return applyShading(ray, &hitRecord, scene);
+    }
+    else if(ray->depth == 0){
+        // if there is no hit and ray is the primary ray
+        return scene->background_color;
+    }
+    else{
+        // there is no hit and the ray is not a primary ray
+        return parser::Vec3i(); // returns (0,0,0)
+    }
 }
 
 parser::Vec3i applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *scene){
@@ -208,42 +222,52 @@ parser::Vec3i applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parse
     parser::Vec3f color;
     // add ambient term
     // L_a(x, w_o) = k_a * I_a
-    parser::Vec3f k_a = material.ambient;
-    parser::Vec3f I_a = scene->ambient_light;
-    color += k_a * I_a;
+    color += material.ambient * scene->ambient_light;
 
     // Mirror reflection
-    /* if (material.is_mirror) {
+    if (material.is_mirror) {
         parser::Ray reflectionRay;
         // w_r = -w_o + 2*n*(n . w_o)
-        parser::Vec3f w_o = ray.direction;
+        parser::Vec3f w_o = (ray->origin - hitRecord->p).normalize();
         parser::Vec3f reflected_ray = -w_o + (hitRecord->n)*(hitRecord->n.dot(w_o))*2;
-        reflectionRay.depth += 1;
+        reflectionRay.depth += ray->depth + 1;
         reflectionRay.direction = reflected_ray.normalize();
         reflectionRay.origin = hitRecord->p;
-        parser::Vec3f reflectionColor = computeColor(&reflectionRay, scene);
+        parser::Vec3i reflectionColor = computeColor(&reflectionRay, scene);
         color += material.mirror * reflectionColor;
-    } */
+    }
 
     for(int i = 0; i < scene->point_lights.size(); i++){
-        // add diffuse term
-        // L_d(x, w_o) = k_d * cosTheta * E_i(x, w_i)
-        // cosTheta = max(0, w_i . n)
-        // E_i(x, w_i) = I * r^2
+            
         parser::PointLight point_light = scene->point_lights[i];
         parser::Vec3f light_dir = (point_light.position - hitRecord->p).normalize();
 
         float cosTheta = std::max(0.0f, light_dir.dot(hitRecord->n));
-        parser::Vec3f k_d = material.diffuse;
-        float r = parser::Vec3f::distance(point_light.position, hitRecord->p);
-        parser::Vec3f E_i = point_light.intensity / pow(r, 2);
+        if(!(cosTheta == 0.0f)){
+            // add diffuse term
+            // L_d(x, w_o) = k_d * cosTheta * E_i(x, w_i)
+            // cosTheta = max(0, w_i . n)
+            // E_i(x, w_i) = I * r^2
+            float distance = parser::Vec3f::distance(point_light.position, hitRecord->p);
+            parser::Vec3f E = point_light.intensity / pow(distance, 2);
 
-        parser::Vec3f L_d = E_i * k_d * cosTheta;
+            parser::Vec3f diffuse_shading = E * material.diffuse * cosTheta;
 
-        color += L_d;
+            color += diffuse_shading;
 
-        // add specular shading
-        //
+            // add specular shading
+            // L_s(x, w_o) = k_s * (cosAlpha^phong_exponent) * E_i(x, w_i)
+            // cosAlpha = max(0, n . h)
+            // h = (w_i + w_o) / ||w_i + w_o||
+            parser::Vec3f k_s, h, w_o;
+            w_o = (ray->origin - hitRecord->p).normalize();
+            h = (light_dir + w_o) / (light_dir + w_o).length();
+            float cosAlpha = std::max(0.0f, hitRecord->n.dot(h));
+
+            parser::Vec3f specular_shading = E * material.specular * (float) pow(cosAlpha, material.phong_exponent);
+
+            color += specular_shading;
+        }
     }
     // clamp color
     parser::Vec3i clamped_color;
@@ -253,67 +277,28 @@ parser::Vec3i applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parse
     return clamped_color;
 }
 
-parser::Vec3i computeColor(parser::Ray *ray, parser::Scene *scene){
-    parser::hitRecord hitRecord;
-    if(closestHit(ray, &hitRecord, scene)){
-        // if there is a hit
-        return applyShading(ray, &hitRecord, scene);
-    }
-    else return scene->background_color;
-    /* parser::hitRecord hitRecord;
-    if (ray.depth > scene.max_recursion_depth){
-        // if the recursion limit is reached
-        return parser::Vec3i(); // returns (0,0,0)
-    }
-    else if(closestHit(ray, x, y, hitRecord, scene, camera)){
-        // if there is a hit
-        return applyShading(ray, hitRecord, scene);
-    }
-    else if(ray.depth == 0){
-        // if there is no hit and ray is the primary ray
-        return scene.background_color;
-    }
-    else{
-        // there is no hit and the ray is reflected from a surface
-        return parser::Vec3i(); // returns (0,0,0)
-    } */
-}
-
 parser::Ray computeRay(int x, int y, parser::Camera *camera, parser::Scene *scene){
     parser::Vec3f u = parser::Vec3f::cross(camera->gaze, camera->up).normalize();
-    parser::Vec3f v = -camera->up; // if i dont put minus here, the character is upside down lol
-
-    // Center of the near plane
-    parser::Vec3f near_center = camera->position + camera->gaze.normalize() * camera->near_distance;
+    parser::Vec3f v = camera->up;
 
     parser::Vec4f near_plane = camera->near_plane;
-    // Compute the extents of the near plane
     float l = near_plane.x;
     float r = near_plane.y;
     float b = near_plane.z;
     float t = near_plane.w;
 
-    // Compute the Vectors to the corners of the near plane
-    parser::Vec3f to_left = u * l;
-    parser::Vec3f to_right = u * r;
-    parser::Vec3f to_bottom = v * b;
-    parser::Vec3f to_top = v * t;
+    // s_u = (i+0.5) * (r-l)/n_x
+    // s_v = (j+0.5) * (t-b)/n_y
+    float s_u = (x + 0.5) * (r - l)/camera->image_width;
+    float s_v = (y + 0.5) * (t - b)/camera->image_height;
 
-    // For each pixel (x, y)
-    float i = l + (r - l) * (x + 0.5) / camera->image_width;
-    float j = b + (t - b) * (y + 0.5) / camera->image_height;
+    // p_ij_world = e + u * (l + s_u) + v * (t - s_v) + w * -distance
+    parser::Vec3f pixel_ij_world = camera->position + 
+    u * (l + s_u) + v * (t - s_v) + camera->gaze.normalize() * camera->near_distance;
 
-    // Point on the near plane for this pixel
-    parser::Vec3f point_on_plane = near_center + to_right * i + to_top * j;
-
-    // Ray direction
-    parser::Vec3f ray_dir = point_on_plane - camera->position;
-    ray_dir = ray_dir.normalize();
-
-    // Create the ray
     parser::Ray ray;
     ray.origin = camera->position;
-    ray.direction = ray_dir;
+    ray.direction = pixel_ij_world - camera->position;
     ray.depth = 0;
 
     return ray;
@@ -336,19 +321,15 @@ void* render_thread(void* arg) {
             // Convert pixel (x, y) to camera space or world space here as required
             // and compute the ray from the camera position through the pixel
             // Here, it's assumed that 'computeRay' is a function that computes the ray for a given pixel
-            //std::cout << "y: " << y << ", " << "x: "<< x << std::endl;
             parser::Ray ray = computeRay(x, y, camera, scene); // You would need to implement computeRay
 
             // Compute color for the ray
-            //std::cout << "computeRay successfully called" << std::endl;
             parser::Vec3i color = computeColor(&ray, scene); // computeColor should be thread-safe
             
             // The index in the image array needs to consider the width of the image
             int index = (y * data->width + x) * 3;
-            //std::cout << "index: " << index << std::endl;
 
             // Set pixel color in image buffer, assuming color values are clamped to 0-255
-
             image[index] = (unsigned char)(color.x); // Red
             image[index + 1] = (unsigned char)(color.y); // Green
             image[index + 2] = (unsigned char)(color.z); // Blue
