@@ -35,8 +35,6 @@ parser::Vec3f o, parser::Vec3f d, parser::Scene *scene){
         return data;
     }
 
-    //float alpha = compute_determinant(o-triangle_c, triangle_b-triangle_c, -d) / determinant_A;
-    //if(alpha < 0.0f){data.hit = false; return data;}
     float beta = compute_determinant(triangle_a - o, triangle_a - triangle_c, d) / determinant_A;
     if(beta < 0.0f){data.hit = false; return data;}
     float gamma = compute_determinant(triangle_a - triangle_b, triangle_a - o, d) / determinant_A;
@@ -72,7 +70,7 @@ parser::Vec3f o, parser::Vec3f d, parser::Scene *scene){
     float first_term = (-d).dot(o_c);
     float discriminant = pow(d.dot(o_c), 2) - (d.dot(d) * (o_c.dot(o_c) - pow(R, 2)));
 
-    if (discriminant < 0) {
+    if (discriminant < 0.0f) {
         // there is no intersection
         data.hit = false;
         return data;
@@ -84,16 +82,16 @@ parser::Vec3f o, parser::Vec3f d, parser::Scene *scene){
     float t_1 = (first_term + discriminant) / denominator;
     float t_2 = (first_term - discriminant) / denominator;
 
-    if (t_1 > 0 && t_2 > 0){
+    if (t_1 > 0.0f && t_2 > 0.0f){
         // two intersections
         data.t = std::min(t_1, t_2);
         data.hit = true;
     }
-    else if (t_1 > 0){
+    else if (t_1 > 0.0f){
         data.t = t_1;
         data.hit = true;
     }
-    else if (t_2 > 0){
+    else if (t_2 > 0.0f){
         data.t = t_2;
         data.hit = true;
     }
@@ -141,7 +139,7 @@ bool closestHit(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *s
         }
     }
     // loop through triangles
-    for(int i = 0; i < scene->triangles.size() && !flag; i++){
+    for(int i = 0; i < scene->triangles.size(); i++){
         parser::Triangle triangle = scene->triangles[i];
         int a, b, c;
         a = triangle.indices.v0_id; b = triangle.indices.v1_id; c = triangle.indices.v2_id;
@@ -168,7 +166,7 @@ bool closestHit(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *s
     }
     
     // loop through meshes
-    for(int i = 0; i < scene->meshes.size() && !flag; i++){
+    for(int i = 0; i < scene->meshes.size(); i++){
         const parser::Mesh& mesh = scene->meshes[i];
         
         // loop through individual faces of the mesh
@@ -387,7 +385,6 @@ int main(int argc, char* argv[])
 
         write_ppm(camera.image_name.c_str(), image, width, height);
         
-        // Cleanup
         delete[] image;
     }
     auto finish = std::chrono::high_resolution_clock::now();
