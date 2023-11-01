@@ -1,19 +1,18 @@
 #include "parser.h"
 #include "ppm.h"
 
-parser::Vec3i applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *scene);
-parser::Vec3i computeColor(parser::Ray *ray, parser::Scene *scene);
+parser::Vec3f applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *scene);
+parser::Vec3f computeColor(parser::Ray *ray, parser::Scene *scene);
 
 typedef unsigned char RGB[3];
 
 std::vector<parser::Vec3f> triangle_normals;
-std::set<std::string> processedFaces;
 
 float compute_determinant(parser::Vec3f vec1, 
 parser::Vec3f vec2, parser::Vec3f vec3){
-    float a = vec1.x, b = vec1.y, c = vec1.z;
-    float d = vec2.x, e = vec2.y, f = vec2.z;
-    float g = vec3.x, h = vec3.y, i = vec3.z;
+    float a = vec1.x, d = vec2.x, g = vec3.x;
+    float b = vec1.y, e = vec2.y, h = vec3.y;
+    float c = vec1.z, f = vec2.z, i = vec3.z;
 
     float det = a*(e*i - h*f) + b*(g*f - d*i) + c*(d*h - e*g);
     return det;
@@ -36,18 +35,26 @@ parser::Vec3f o, parser::Vec3f d, parser::Scene *scene){
         return data;
     }
 
-    float beta = compute_determinant(triangle_a-o, triangle_a-triangle_c, d) / determinant_A;
-    float gamma = compute_determinant(triangle_a-triangle_b, triangle_a-o, d) / determinant_A;
-    float t = compute_determinant(triangle_a-triangle_b, triangle_a-triangle_c, triangle_a-o) / determinant_A;
+    //float alpha = compute_determinant(o-triangle_c, triangle_b-triangle_c, -d) / determinant_A;
+    //if(alpha < 0.0f){data.hit = false; return data;}
+    float beta = compute_determinant(triangle_a - o, triangle_a - triangle_c, d) / determinant_A;
+    if(beta < 0.0f){data.hit = false; return data;}
+    float gamma = compute_determinant(triangle_a - triangle_b, triangle_a - o, d) / determinant_A;
+    if(gamma < 0.0f){data.hit = false; return data;}
+    float t = compute_determinant(triangle_a - triangle_b, triangle_a - triangle_c, triangle_a - o) / determinant_A;
+    if(t < 0.0f){data.hit = false; return data;}
 
-    if (beta >= 0.0f && gamma >= 0.0f && (beta + gamma) <= 1.0f) {
+    if (beta + gamma <= 1.0f &&
+        0.0f <= beta &&
+        0.0f <= gamma &&
+        0.0f < t)
+    {
         data.hit = true;
-        data.beta = beta;
         data.gamma = gamma;
+        data.beta = beta;
         data.t = t;
-    } else {
-        data.hit = false;
     }
+    else data.hit = false;
 
     return data;
 }
@@ -141,10 +148,9 @@ bool closestHit(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *s
         parser::triangle_ray_intersection_data data = compute_tri_ray_inter(
             a, b, c, o, d, scene
         );
-        float beta = data.beta, gamma = data.gamma, t = data.t;
-        // p(beta, gamma) = vec_a + beta*(vec_b-vec_a) + gamma*(vec_c-vec_a)
 
-        if(t < t_min && data.hit){
+        if(data.hit && data.t < t_min){
+            float gamma = data.gamma, beta = data.beta, t = data.t;
             // TODO: check the cosTheta being more than 90 degrees
             t_min = t;
             flag = true;
@@ -152,9 +158,11 @@ bool closestHit(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *s
             // get triangle normal
             hitRecord->n = triangle_normals[i];
             // calculate hit point
-            parser::Vec3f vec_a, vec_b, vec_c;
-            vec_a = scene->vertex_data[a]; vec_b = scene->vertex_data[b]; vec_c = scene->vertex_data[c];
-            parser::Vec3f p = vec_a + (vec_b - vec_a) * beta + (vec_c - vec_a) * gamma;
+            parser::Vec3f tri_a = scene->vertex_data[a];
+            parser::Vec3f tri_b = scene->vertex_data[b];
+            parser::Vec3f tri_c = scene->vertex_data[c];
+            // p = tri_a + beta * (b - a) + gamma * (c - a)
+            parser::Vec3f p = tri_a + (tri_b - tri_a) * beta + (tri_c - tri_a) * gamma;
             hitRecord->p = p;
         }
     }
@@ -166,30 +174,26 @@ bool closestHit(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *s
         // loop through individual faces of the mesh
         for(int j = 0; j < mesh.faces.size(); j++){
             const parser::Face& face = mesh.faces[j];
-            int k = 0;
-            bool eq = false;
 
             parser::triangle_ray_intersection_data data = compute_tri_ray_inter(
                 face.v0_id, face.v1_id, face.v2_id, o, d, scene
             );
 
-            if(data.t < t_min && data.hit){
+            if(data.hit && data.t < t_min){
+                float gamma = data.gamma, beta = data.beta, t = data.t;
                 t_min = data.t;
                 flag = true;
                 // record the hit point
                 hitRecord->material_id = mesh.material_id;
                 // calculate normal
-                parser::Vec3f a, b, c;
-                a = scene->vertex_data[face.v0_id];
-                b = scene->vertex_data[face.v1_id];
-                c = scene->vertex_data[face.v2_id];
+                parser::Vec3f tri_a = scene->vertex_data[face.v0_id];
+                parser::Vec3f tri_b = scene->vertex_data[face.v1_id];
+                parser::Vec3f tri_c = scene->vertex_data[face.v2_id];
                 parser::Vec3f normal;
-                normal = parser::Vec3f::cross((c - b),(a - b)).normalize();
+                normal = parser::Vec3f::cross((tri_c - tri_b),(tri_a - tri_b)).normalize();
                 hitRecord->n = normal;
                 // calculate hit point
-                parser::Vec3f p = scene->vertex_data[face.v0_id] +
-                (scene->vertex_data[face.v1_id] - scene->vertex_data[face.v0_id]) * data.beta +
-                (scene->vertex_data[face.v2_id] - scene->vertex_data[face.v0_id]) * data.gamma;
+                parser::Vec3f p = tri_a + (tri_b - tri_a) * beta + (tri_c - tri_a) * gamma;
                 hitRecord->p = p;
             }
         }
@@ -197,10 +201,10 @@ bool closestHit(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *s
     return flag;
 }
 
-parser::Vec3i computeColor(parser::Ray *ray, parser::Scene *scene){
+parser::Vec3f computeColor(parser::Ray *ray, parser::Scene *scene){
     if (ray->depth > scene->max_recursion_depth){
         // if the recursion limit is reached
-        return parser::Vec3i(); // returns (0,0,0)
+        return parser::Vec3f(); // returns (0,0,0)
     }
     parser::hitRecord hitRecord;
     if(closestHit(ray, &hitRecord, scene)){
@@ -209,20 +213,21 @@ parser::Vec3i computeColor(parser::Ray *ray, parser::Scene *scene){
     }
     else if(ray->depth == 0){
         // if there is no hit and ray is the primary ray
-        return scene->background_color;
+        parser::Vec3i bg = scene->background_color;
+        return parser::Vec3f(bg.x, bg.y, bg.z);
     }
     else{
         // there is no hit and the ray is not a primary ray
-        return parser::Vec3i(); // returns (0,0,0)
+        return parser::Vec3f(); // returns (0,0,0)
     }
 }
 
-parser::Vec3i applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *scene){
+parser::Vec3f applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parser::Scene *scene){
     parser::Material material = scene->materials[hitRecord->material_id];
     parser::Vec3f color;
     // add ambient term
     // L_a(x, w_o) = k_a * I_a
-    color += material.ambient * scene->ambient_light;
+    color = material.ambient * scene->ambient_light;
 
     // Mirror reflection
     if (material.is_mirror) {
@@ -233,7 +238,7 @@ parser::Vec3i applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parse
         reflectionRay.depth += ray->depth + 1;
         reflectionRay.direction = reflected_ray.normalize();
         reflectionRay.origin = hitRecord->p;
-        parser::Vec3i reflectionColor = computeColor(&reflectionRay, scene);
+        parser::Vec3f reflectionColor = computeColor(&reflectionRay, scene);
         color += material.mirror * reflectionColor;
     }
 
@@ -269,12 +274,7 @@ parser::Vec3i applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parse
             color += specular_shading;
         }
     }
-    // clamp color
-    parser::Vec3i clamped_color;
-    clamped_color.x = std::min(std::max(color.x, 0.0f), 255.0f);
-    clamped_color.y = std::min(std::max(color.y, 0.0f), 255.0f);
-    clamped_color.z = std::min(std::max(color.z, 0.0f), 255.0f);
-    return clamped_color;
+    return color;
 }
 
 parser::Ray computeRay(int x, int y, parser::Camera *camera, parser::Scene *scene){
@@ -305,34 +305,30 @@ parser::Ray computeRay(int x, int y, parser::Camera *camera, parser::Scene *scen
 }
 
 void* render_thread(void* arg) {
-    // Cast argument to ThreadData pointer
     parser::ThreadData* data = static_cast<parser::ThreadData*>(arg);
     parser::Scene* scene = data->scene;
     parser::Camera* camera = data->camera;
     unsigned char* image = data->image;
 
-    // Calculate the size of a pixel in the camera space
     float pixelWidth = (camera->near_plane.x - camera->near_plane.y) / camera->image_width;
     float pixelHeight = (camera->near_plane.w - camera->near_plane.z) / camera->image_height;
 
-    // Loop over each pixel in the assigned rows
-    for (int y = data->startRow; y < data->endRow; ++y) {
+    for (int y = data->start; y < data->end; ++y) {
         for (int x = 0; x < data->width; ++x) {
-            // Convert pixel (x, y) to camera space or world space here as required
-            // and compute the ray from the camera position through the pixel
-            // Here, it's assumed that 'computeRay' is a function that computes the ray for a given pixel
-            parser::Ray ray = computeRay(x, y, camera, scene); // You would need to implement computeRay
+            parser::Ray ray = computeRay(x, y, camera, scene);
 
-            // Compute color for the ray
-            parser::Vec3i color = computeColor(&ray, scene); // computeColor should be thread-safe
+            parser::Vec3f color = computeColor(&ray, scene);
             
-            // The index in the image array needs to consider the width of the image
             int index = (y * data->width + x) * 3;
+            // clamp color
+            parser::Vec3i clamped_color;
+            clamped_color.x = std::min(std::max(color.x, 0.0f), 255.0f);
+            clamped_color.y = std::min(std::max(color.y, 0.0f), 255.0f);
+            clamped_color.z = std::min(std::max(color.z, 0.0f), 255.0f);
 
-            // Set pixel color in image buffer, assuming color values are clamped to 0-255
-            image[index] = (unsigned char)(color.x); // Red
-            image[index + 1] = (unsigned char)(color.y); // Green
-            image[index + 2] = (unsigned char)(color.z); // Blue
+            image[index] = (unsigned char)(clamped_color.x); // Red
+            image[index + 1] = (unsigned char)(clamped_color.y); // Green
+            image[index + 2] = (unsigned char)(clamped_color.z); // Blue
         }
     }
 
@@ -341,7 +337,6 @@ void* render_thread(void* arg) {
 
 int main(int argc, char* argv[])
 {
-    // Sample usage for reading an XML scene file
     parser::Scene scene;
     scene.loadFromXml(argv[1]); // reading the scene(lights, objects, etc.)
 
@@ -362,7 +357,7 @@ int main(int argc, char* argv[])
         
         triangle_normals.push_back(normal);
     }
-    const int num_threads = 256; // or std::thread::hardware_concurrency() to use all hardware threads
+    const int num_threads = 256;
     pthread_t threads[num_threads];
     parser::ThreadData threadData[num_threads];
 
@@ -370,13 +365,11 @@ int main(int argc, char* argv[])
     for (int i = 0; i < scene.cameras.size(); i++) {
         parser::Camera& camera = scene.cameras[i];
         int width = camera.image_width, height = camera.image_height;
-        std::cout << "width: " << width << ", height: " << height << std::endl;
         unsigned char* image = new unsigned char[width * height * 3];
 
-        // Create threads
         for (int j = 0; j < num_threads; j++) {
-            threadData[j].startRow = j * height / num_threads;
-            threadData[j].endRow = (j + 1) * height / num_threads;
+            threadData[j].start = j * height / num_threads;
+            threadData[j].end = (j + 1) * height / num_threads;
             threadData[j].width = width;
             threadData[j].height = height;
             threadData[j].image = image;
@@ -388,13 +381,10 @@ int main(int argc, char* argv[])
                 return 1;
             }
         }
-
-        // Wait for threads to finish
         for (int j = 0; j < num_threads; j++) {
             pthread_join(threads[j], nullptr);
         }
 
-        // Write the image to file
         write_ppm(camera.image_name.c_str(), image, width, height);
         
         // Cleanup

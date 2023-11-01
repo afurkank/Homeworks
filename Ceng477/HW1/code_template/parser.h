@@ -107,13 +107,13 @@ namespace parser
     };
 
     struct triangle_ray_intersection_data{
-        float beta, gamma, t;
+        float gamma, beta, t;
         bool hit;
 
-        triangle_ray_intersection_data(): beta(0), gamma(0), t(0), hit(false) {}
+        triangle_ray_intersection_data(): gamma(0), beta(0), t(0), hit(false) {}
 
-        triangle_ray_intersection_data(float beta,
-        float gamma, float t, bool hit): beta(beta), gamma(gamma), t(t), hit(hit) {}
+        triangle_ray_intersection_data(float gamma,
+        float beta, float t, bool hit): gamma(gamma), beta(beta), t(t), hit(hit) {}
     };
 
     struct sphere_ray_intersection_data{
@@ -203,8 +203,8 @@ namespace parser
     };
 
     struct ThreadData {
-        int startRow;
-        int endRow;
+        int start;
+        int end;
         int width;
         int height;
         unsigned char* image;
