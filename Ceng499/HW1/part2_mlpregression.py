@@ -9,6 +9,10 @@ def forward_pass(w1, b1, w2, b2, input_data):
     The activation function of the hidden layer is sigmoid.
     Here you are expected to perform all the required operations for a forward pass over the network with the given dataset
     """
+    #print(torch.matmul(input_data, w1).shape)
+    hidden_layer = torch.sigmoid(torch.matmul(input_data, w1) + b1)
+    final_layer = torch.matmul(hidden_layer, w2) + b2
+    return final_layer
     ...
 
 # we load all training, validation, and test datasets for the regression task
@@ -22,7 +26,8 @@ test_dataset, test_label = pickle.load(open("data/part2_regression_test.data", "
 
 train_dataset = torch.from_numpy(train_dataset)
 train_label = torch.from_numpy(train_label)
-
+#print(train_dataset.shape)
+#print(train_label.shape)
 validation_dataset = torch.from_numpy(validation_dataset)
 validation_label = torch.from_numpy(validation_label)
 
@@ -33,19 +38,19 @@ test_label = torch.from_numpy(test_label)
 # Please do not forget to specify requires_grad=True for all parameters since they need to be trainable.
 
 # w1 defines the parameters between the input layer and the hidden layer
-w1 = . . .
+w1 = torch.normal(0, 1, (2, 32), requires_grad=True)
 # Here you are expected to initialize w1 via the Normal distribution (mean=0, std=1).
 ...
 # b defines the bias parameters for the hidden layer
-b1 = . . .
+b1 = torch.normal(0, 1, (32,), requires_grad=True)
 # Here you are expected to initialize b1 via the Normal distribution (mean=0, std=1).
 ...
 # w2 defines the parameters between the hidden layer and the output layer
-w2 = . . .
+w2 = torch.normal(0, 1, (32, 1), requires_grad=True)
 # Here you are expected to initialize w2 via the Normal distribution (mean=0, std=1).
 ...
 # and finally, b2 defines the bias parameters for the output layer
-b2 = . . .
+b2 = torch.normal(0, 1, (1,), requires_grad=True)
 # Here you are expected to initialize b2 via the Normal distribution (mean=0, std=1).
 ...
 
@@ -70,7 +75,7 @@ for iteration in range(1, ITERATION+1):
     # Using the forward_pass function, we are performing a forward pass over the network with the training data   
     train_predictions = forward_pass(w1, b1, w2, b2, train_dataset)
     # Here you are expected to calculate the MEAN squared error loss with respect to the network predictions and the training ground truth
-    train_mse_loss = ...
+    train_mse_loss = torch.pow(train_label - train_predictions, 2).mean()
     
     train_loss_array.append(train_mse_loss.item())
 
@@ -81,7 +86,7 @@ for iteration in range(1, ITERATION+1):
     with torch.no_grad():
         validation_predictions = forward_pass(w1, b1, w2, b2, validation_dataset)
         # Here you are expected to calculate the average/mean squared error loss for the validation datasets by using the validation dataset ground truth.
-        validation_mse_loss = ...
+        validation_mse_loss = torch.pow(validation_label-validation_predictions, 2).mean()
         validation_loss_array.append(validation_mse_loss.item())
     print("Iteration : %d - Train MSE Loss %.4f - Validation MSE Loss : %.2f" % (iteration+1, train_mse_loss.item(), validation_mse_loss.item()))
 
@@ -90,7 +95,7 @@ for iteration in range(1, ITERATION+1):
 with torch.no_grad():
     test_predictions = forward_pass(w1, b1, w2, b2, test_dataset)
     # Here you are expected to calculate the network's MSE on the test dataset...
-    test_loss = ...
+    test_loss = torch.pow(test_label - test_predictions, 2).mean()
     print("Test MSE loss : %.4f" % test_loss.item())
 
 # We plot the loss versus iteration graph for both datasets (training and validation)
