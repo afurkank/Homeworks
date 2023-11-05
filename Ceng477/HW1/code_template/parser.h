@@ -26,10 +26,9 @@ namespace parser
     struct Vec3f
     {
         float x, y, z;
-        int depth;
 
-        Vec3f(): x(0), y(0), z(0), depth(0) {}
-        Vec3f(float x, float y, float z): x(x), y(y), z(z), depth(depth) {}
+        Vec3f(): x(0), y(0), z(0) {}
+        Vec3f(float x, float y, float z): x(x), y(y), z(z) {}
         Vec3f operator*(float scalar) const{
             return Vec3f(x*scalar, y*scalar, z*scalar);
         }
@@ -90,11 +89,11 @@ namespace parser
     };
 
     struct Ray{
-        Vec3f origin, direction;
+        Vec3f o, d;
         int depth;
 
-        Ray(): origin(Vec3f()), direction(Vec3f()), depth(0) {}
-        Ray(Vec3f o, Vec3f d, int depth): origin(o), direction(d), depth(depth) {}
+        Ray(): o(Vec3f()), d(Vec3f()), depth(0) {}
+        Ray(Vec3f o, Vec3f d, int depth): o(o), d(d), depth(depth) {}
     };
 
     struct hitRecord{
@@ -102,27 +101,26 @@ namespace parser
         int material_id;
         Vec3f n, p; // surface normal, intersection point
 
-        hitRecord(): material_id(0), 
-        n(Vec3f()), p(Vec3f()) {}
+        hitRecord(): material_id(0), n(Vec3f()), p(Vec3f()) {}
     };
 
-    struct triangle_ray_intersection_data{
+    struct tri_intersect_data{
         float gamma, beta, t;
         bool hit;
 
-        triangle_ray_intersection_data(): gamma(0), beta(0), t(0), hit(false) {}
+        tri_intersect_data(): gamma(0.0f), beta(0.0f), t(0.0f), hit(false) {}
 
-        triangle_ray_intersection_data(float gamma,
+        tri_intersect_data(float gamma,
         float beta, float t, bool hit): gamma(gamma), beta(beta), t(t), hit(hit) {}
     };
 
-    struct sphere_ray_intersection_data{
+    struct sphere_intersect_data{
         float t;
         bool hit;
 
-        sphere_ray_intersection_data(): t(0), hit(false) {}
+        sphere_intersect_data(): t(0.0f), hit(false) {}
 
-        sphere_ray_intersection_data(float t, bool hit): t(t), hit(hit) {}
+        sphere_intersect_data(float t, bool hit): t(t), hit(hit) {}
     };
 
     struct Vec4f
@@ -203,10 +201,7 @@ namespace parser
     };
 
     struct ThreadData {
-        int start;
-        int end;
-        int width;
-        int height;
+        int start, end, width, height;
         unsigned char* image;
         Scene* scene;
         Camera* camera;
