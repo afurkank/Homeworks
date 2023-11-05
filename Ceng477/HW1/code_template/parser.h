@@ -47,10 +47,13 @@ namespace parser
         Vec3f operator-() const {
             return Vec3f(-x, -y, -z);
         }
-        Vec3f operator*(Vec3f &vec2) const{
+        Vec3f operator*(const Vec3f &vec2) const{
             return Vec3f(x*vec2.x, y*vec2.y, z*vec2.z);
         }
         Vec3f operator/(float scalar) const{
+            if(scalar == 0.0f){
+                return Vec3f();
+            }
             return Vec3f(x/scalar, y/scalar, z/scalar);
         }
         Vec3f& operator+=(const Vec3f& vec2) {

@@ -189,10 +189,10 @@ parser::Vec3f applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parse
         parser::Vec3f w_o = (ray->o - hitRecord->p).normalize();
         cosTheta = hitRecord->n.dot(w_o);
         parser::Vec3f reflection_dir = -w_o + hitRecord->n*cosTheta*2;
-        reflectionRay.depth += ray->depth + 1;
+        reflectionRay.depth = ray->depth + 1;
         reflectionRay.d = reflection_dir.normalize();
         reflectionRay.o = hitRecord->p + hitRecord->n * scene->shadow_ray_epsilon;
-        color += computeColor(&reflectionRay, scene) * material.mirror;
+        color += computeColor(&reflectionRay, scene) * material.mirror; // add the color of the reflected ray
     }
 
     for(int i = 0; i < scene->point_lights.size(); i++){
@@ -211,9 +211,9 @@ parser::Vec3f applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parse
         
         // intersect all objects and see if any of them is closer to 
         // shadow ray origin than the point light
-        parser::hitRecord shadowHit;
-        if(closestHit(&shadow_ray, &shadowHit, scene)){
-            parser::Vec3f shadowHitPoint = shadowHit.p;
+        parser::hitRecord shadowHitRecord;
+        if(closestHit(&shadow_ray, &shadowHitRecord, scene)){
+            parser::Vec3f shadowHitPoint = shadowHitRecord.p;
             
             float shadow_object_distance = parser::Vec3f::distance(shadowHitPoint, hitRecord->p);
 
@@ -222,7 +222,6 @@ parser::Vec3f applyShading(parser::Ray *ray, parser::hitRecord *hitRecord, parse
             }
         }
         
-
         cosTheta = light_d.dot(hitRecord->n);
         if(cosTheta > 0.0f){
             // diffuse shading
@@ -326,9 +325,9 @@ void *singleThread(void* arg) {
             clamped_color.y = std::min(std::max(color.y, 0.0f), 255.0f);
             clamped_color.z = std::min(std::max(color.z, 0.0f), 255.0f);
 
-            image[index] = (unsigned char)(clamped_color.x); // Red
-            image[index + 1] = (unsigned char)(clamped_color.y); // Green
-            image[index + 2] = (unsigned char)(clamped_color.z); // Blue
+            image[index] = (unsigned char)(clamped_color.x);
+            image[index + 1] = (unsigned char)(clamped_color.y);
+            image[index + 2] = (unsigned char)(clamped_color.z);
         }
     }
 
