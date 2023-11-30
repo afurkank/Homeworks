@@ -13,9 +13,9 @@ K_values = [2, 3, 4, 5, 6, 7, 8, 9, 10]
 dataset1_losses = []
 for K in K_values:
     alphas = []
-    for _ in range(10):
+    for _ in range(5):
         losses = []
-        for _ in range(10):
+        for _ in range(5):
             kmeans = KMedoids(dataset1, K=K)
             _, _, loss = kmeans.run()
             losses.append(loss)
@@ -28,9 +28,9 @@ for K in K_values:
 dataset2_losses = []
 for K in K_values:
     alphas = []
-    for _ in range(10):
+    for _ in range(5):
         losses = []
-        for _ in range(10):
+        for _ in range(5):
             kmeans = KMedoids(dataset2, K=K)
             _, _, loss = kmeans.run()
             losses.append(loss)

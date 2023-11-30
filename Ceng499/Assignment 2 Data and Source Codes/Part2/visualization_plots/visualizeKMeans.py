@@ -20,7 +20,6 @@ for k, center in kmeans.cluster_centers.items():
 for k, cluster in kmeans.clusters.items():
     print(f"Cluster {k}: {len(cluster)} points")
 
-# Assuming kmeans is your instance of KMeans that has been run on some data
 colors = ['r', 'g', 'b', 'y', 'c', 'm']
 fig, ax = plt.subplots()
 
@@ -39,5 +38,5 @@ for i in range(kmeans.K):
 ax.scatter(centers_2d[:, 0], centers_2d[:, 1], marker='*', s=200, c='#050505')
 
 plt.savefig('visualizeKMeans.png')
-
+plt.show()
 plt.close()
