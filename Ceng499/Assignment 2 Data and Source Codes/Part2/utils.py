@@ -26,9 +26,9 @@ def execute_kmeans(dataset, k):
         model = KMeans(dataset=dataset, K=k)
         cluster_centers, clusters, loss = model.run()
         losses.append(loss)
-        results.append((cluster_centers, clusters, loss))
-    cluster_centers, clusters, loss = results[np.argmin(losses)]
-    return cluster_centers, clusters, loss, model.labels
+        results.append((cluster_centers, clusters, loss, model))
+    cluster_centers, clusters, loss, model = results[np.argmin(losses)]
+    return cluster_centers, clusters, loss, model
 
 def get_embedding_class(method, metric):
     emb_class = None
@@ -76,24 +76,20 @@ def plot_graph_kmedoids(embedded_data, medoids, clusters, graph_name, method, ti
     plt.show()
     plt.close()
 
-def plot_graph_kmeans(embedded_data, cluster_centers, labels, graph_name, method, title):
+def plot_graph_kmeans(embedded_data, model:KMeans, graph_name, method, title):
     plt.figure(figsize=(8,6))
 
-    # Unique colors for each cluster
     colors = ['r', 'g', 'b', 'y', 'c', 'm', 'k', 'orange', 'purple', 'brown']
-
-    # Number of clusters
-    K = len(cluster_centers)
-
-    # Plotting data points with color coding based on cluster labels
-    for k in range(K):
-        # Extracting the points that belong to the current cluster
-        cluster_points = embedded_data[labels == k]
-        # Scatter plot for these points
-        plt.scatter(cluster_points[:, 0], cluster_points[:, 1], s=7, color=colors[k % len(colors)], label=f"Cluster {k}")
     
-    # Plotting cluster centers
-    for k, center in cluster_centers.items():
+    # get indices of all points in a cluster for every cluster
+    for k, cluster in model.cluster_indices.items():
+        # for a single cluster, get its embedded version
+        cluster_points = embedded_data[np.array(cluster)]
+        # scatter the points in the x-y axis(reduced to only 2 features)
+        plt.scatter(cluster_points[:, 0], cluster_points[:, 1], s=7, color=colors[k % len(colors)], label=f"Cluster {k}")
+
+    # scatter cluster centers
+    for k, center in model.cluster_centers.items():
         plt.scatter(center[0], center[1], color='black', marker='*', s=200, label=f"Center of Cluster {k}" if k == 0 else None)
 
     plt.title(title)

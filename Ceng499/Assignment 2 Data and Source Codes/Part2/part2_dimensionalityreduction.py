@@ -13,7 +13,7 @@ datasets = [
 K = 3 # I chose K as 3 from the graphs using elbow method
 
 # dimensionality reduction methods
-methods = ["TSNE", "UMAP", "PCA"]
+methods = ["UMAP", "TSNE", "PCA"]
 
 # dimensionality reduction hyperparameters for TSNE and UMAP
 metrics = ["euclidean", "cosine"]
@@ -30,13 +30,12 @@ for method in methods:
             )
             embedded_data = emb_class.fit_transform(dataset)
 
-            cluster_centers, clusters_kmeans, loss_kmeans, labels = execute_kmeans(embedded_data, K)
+            cluster_centers, clusters_kmeans, loss_kmeans, model = execute_kmeans(embedded_data, K)
             medoids, clusters_kmedoids, loss_kmedoids = execute_kmedoids(embedded_data, K)
 
             plot_graph_kmeans(
                 embedded_data=embedded_data,
-                cluster_centers=cluster_centers,
-                labels=labels,
+                model=model,
                 graph_name='KMeans_' + method + '_' + str(dataset_name) + '.png',
                 method=method,
                 title="K-means Clustering-" + str(method),
@@ -58,14 +57,12 @@ for method in methods:
                 )
                 embedded_data = emb_class.fit_transform(dataset)
 
-                cluster_centers, clusters_kmeans, loss_kmeans, labels = execute_kmeans(embedded_data, K)
+                cluster_centers, clusters_kmeans, loss_kmeans, model = execute_kmeans(embedded_data, K)
                 medoids, clusters_kmedoids, loss_kmedoids = execute_kmedoids(embedded_data, K)
-
+                
                 plot_graph_kmeans(
                     embedded_data=embedded_data,
-                    cluster_centers=cluster_centers,
-                    #clusters=clusters_kmeans,
-                    labels=labels,
+                    model=model,
                     graph_name='KMeans_' + method + '_' + str(metric) + '_' + str(dataset_name) + '.png',
                     method=method,
                     title="K-means Clustering-" + str(method),

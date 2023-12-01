@@ -14,7 +14,7 @@ class KMeans:
         # self.cluster_centers stores the cluster mean vectors for each cluster in a dictionary
         self.cluster_centers = {i: None for i in range(K)}
         # you are free to add further variables and functions to the class
-        
+        self.cluster_indices = {i: [] for i in range(K)}
         # I use the labels for visualization purposes
         self.labels = [-1 for _ in range(len(self.dataset))]
     def initialize(self):
@@ -31,10 +31,11 @@ class KMeans:
         """Loss function implementation of Equation 1"""
         loss = 0
         for k in range(self.K):
-            cluster = self.clusters[k]
+            loss += np.sum([np.linalg.norm(self.dataset[index]-self.cluster_centers[k])**2 for index in self.cluster_indices[k]])
+            """cluster = self.clusters[k]
             cluster_center = self.cluster_centers[k]
             for data_point in cluster:
-                loss += np.linalg.norm(data_point - cluster_center)**2
+                loss += np.linalg.norm(data_point - cluster_center)**2"""
         return loss
     def run(self):
         """Kmeans algorithm implementation"""
@@ -45,6 +46,7 @@ class KMeans:
         while True:
             # empty all clusters
             self.clusters = {i: [] for i in range(self.K)}
+            self.cluster_indices = {i: [] for i in range(self.K)}
             # clear labels
             self.labels = [-1 for _ in range(len(self.dataset))]
 
@@ -56,6 +58,7 @@ class KMeans:
                 closest_cluster = np.argmin(distances)
                 # assign data point to the closest cluster
                 self.clusters[closest_cluster].append(data_point)
+                self.cluster_indices[closest_cluster].append(i)
                 # record cluster index as its label
                 self.labels[i] = closest_cluster
 
