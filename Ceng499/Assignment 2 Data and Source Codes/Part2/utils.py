@@ -84,7 +84,7 @@ def plot_graph_kmeans(embedded_data, model:KMeans, graph_name, method, title):
     # get indices of all points in a cluster for every cluster
     for k, cluster in model.cluster_indices.items():
         # for a single cluster, get its embedded version
-        cluster_points = embedded_data[np.array(cluster)]
+        cluster_points = embedded_data[cluster]
         # scatter the points in the x-y axis(reduced to only 2 features)
         plt.scatter(cluster_points[:, 0], cluster_points[:, 1], s=7, color=colors[k % len(colors)], label=f"Cluster {k}")
 

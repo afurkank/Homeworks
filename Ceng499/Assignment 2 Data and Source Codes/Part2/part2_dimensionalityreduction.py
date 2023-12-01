@@ -10,8 +10,6 @@ datasets = [
     {"name":"dataset2","data":dataset2},
 ]
 
-K = 3 # I chose K as 3 from the graphs using elbow method
-
 # dimensionality reduction methods
 methods = ["UMAP", "TSNE", "PCA"]
 
@@ -22,7 +20,11 @@ for method in methods:
     for item in datasets:
         dataset_name = item['name']
         dataset = item['data']
-
+        K = None
+        if dataset_name == "dataset1":
+            K = 5 # for dataset1, using the elbow method, I chose K as 5
+        else:
+            K = 3 # similarly, I chose K as 3 using the elbow method for dataset2
         if method == 'PCA':
             emb_class = get_embedding_class(
                 method=method,
