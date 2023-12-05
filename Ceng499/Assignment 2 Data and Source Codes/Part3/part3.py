@@ -12,23 +12,20 @@ K_values = [2, 3, 4, 5]
 linkages = ['single', 'complete']
 metrics = ['euclidean', 'cosine']
 
-"""  THIS PART IS FOR PLOTTING THE DENDROGRAMS GRAPHS  """
+"""  THIS PART IS FOR PLOTTING THE DENDROGRAM GRAPHS  """
 for linkage_method in linkages:
     for metric in metrics:
-        # Create a linkage matrix
-        Z = linkage(dataset, method=linkage_method, metric=metric)
+        # create a linkage matrix
+        linkage_mat = linkage(dataset, method=linkage_method, metric=metric)
 
         # Plot the dendrogram
         plt.figure(figsize=(10, 7))
         plt.title(f"Dendrogram for Linkage={linkage_method}, Metric={metric}")
-        dendrogram(Z)
+        dendrogram(linkage_mat)
         plt.savefig(f"Dendrogram_{linkage_method}_{metric}")
         plt.show()
 
-"""  THIS PART IS FOR PLOTTING THE SILHOUETTE GRAPHS SCORES AND FINDING THE BEST CONFIG  """
-best_K_for_configuration = {}
-max_silhouette_score = -1
-best_configuration = None
+"""  THIS PART IS FOR PLOTTING THE SILHOUETTE AVG SCORE GRAPHS AND FINDING THE BEST CONFIG  """
 # loop through hyperparameter configurations
 for linkage_method in linkages:
     for metric in metrics:
@@ -113,7 +110,6 @@ for linkage_method in linkages:
             )
 
             # Labeling the clusters
-            #centers = clusterer.cluster_centers_
             # Draw white circles at cluster centers
             ax2.scatter(
                 centers[:, 0],
