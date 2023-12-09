@@ -351,5 +351,315 @@ void Scene::convertPPMToPNG(string ppmFileName)
 */
 void Scene::forwardRenderingPipeline(Camera *camera)
 {
-	// TODO: Implement this function
+
+	Vec3 u = crossProductVec3(camera->gaze, camera->v);
+	Vec3 v = crossProductVec3(camera->v, camera->gaze);
+	Vec3 w = inverseVec3(camera->gaze);
+
+	// Perform transformations, clipping, culling, and rasterization here
+	// TODO: Implement the forward rendering pipeline
+
+	// 1. Apply transformations to the scene objects
+
+	vector<vector<Color> > image = this->image;
+	vector<vector<double> > depth = this->depth;
+	vector<Vec3 *> vertices = this->vertices;
+	vector<Color *> colorsOfVertices = this->colorsOfVertices;
+	vector<Scaling *> scalings = this->scalings;
+	vector<Rotation *> rotations = this->rotations;
+	vector<Translation *> translations = this->translations;
+	vector<Mesh *> meshes = this->meshes;
+
+	for(int i = 0; i < meshes.size(); i++){
+		Mesh *mesh = meshes[i];
+		vector<Matrix4> transformations;
+		vector<Vec3> transformed_vertices;
+
+		int j = 0;
+		// 1.1 APPLY MODELING TRANSFORMATIONS
+		// EXTRACT ALL THE TRANSFORMATION MATRICES
+		for(; j < mesh->numberOfTransformations; j++){
+			int transformationId = mesh->transformationIds[j];
+			char transformationType = mesh->transformationTypes[j];
+
+			if(transformationType == 't'){
+				// TRANSLATION
+				Translation *translation = translations[transformationId];
+				double tx = translation->tx;
+				double ty = translation->ty;
+				double tz = translation->tz;
+				double values[4][4] = {
+					{1, 0, 0, tx},
+					{0, 1, 0, ty},
+					{0, 0, 1, tz},
+					{0, 0, 0,  1}
+				};
+				Matrix4 T = values;
+				transformations.push_back(T);
+			}
+			else if(transformationType == 's'){
+				// SCALING
+				Scaling *scaling = scalings[transformationId];
+				double sx = scaling->sx;
+				double sy = scaling->sy;
+				double sz = scaling->sz;
+				double values[4][4] = {
+					{sx,  0,  0, 0},
+					{ 0, sy,  0, 0},
+					{ 0,  0, sz, 0},
+					{ 0,  0,  0, 1}
+				};
+				Matrix4 S = values;
+				transformations.push_back(S);
+			}
+			else{
+				// ROTATION
+				Rotation *rotation = rotations[transformationId];
+				double ux = rotation->ux;
+				double uy = rotation->uy;
+				double uz = rotation->uz;
+				double angle = rotation->angle;
+
+				Vec3 v_projection = Vec3(ux, uy, uz);
+				Vec3 u_projection = normalizeVec3(v_projection);
+				double a = u_projection.x;
+				double b = u_projection.y;
+				double c = u_projection.z;
+				double d = sqrt(b*b + c*c);
+
+				// CALCULATE THE X-AXIS ALIGNMENT MATRIX
+
+				double cos_alpha = c / d;
+				double sin_alpha = b / d;
+
+				double R_x_alpha_values[4][4] = {
+					{1,         0, 		    0, 0},
+					{0, cos_alpha, -sin_alpha, 0},
+					{0, sin_alpha,  cos_alpha, 0},
+					{0, 		0, 			0, 1}
+				};
+				double R_x_minus_alpha_values[4][4] = {
+					{1,          0, 	     0, 0},
+					{0,  cos_alpha,  sin_alpha, 0},
+					{0, -sin_alpha,  cos_alpha, 0},
+					{0, 		 0, 		 0, 1}
+				};
+
+				// CALCULATE THE Y-AXIS ALIGNMENT MATRIX
+
+				double cos_beta = d;
+				double sin_beta = a;
+
+				double R_y_beta_values[4][4] = {
+					{cos_beta, 0, -sin_beta, 0},
+					{		0, 1, 		  0, 0},
+					{sin_beta, 0,  cos_beta, 0},
+					{		0, 0, 		  0, 1}
+				};
+				double R_y_minus_beta_values[4][4] = {
+					{ cos_beta, 0, sin_beta, 0},
+					{		 0, 1, 		  0, 0},
+					{-sin_beta, 0, cos_beta, 0},
+					{		 0, 0, 		  0, 1}
+				};
+
+				Matrix4 R_x_alpha, R_x_minus_alpha, R_y_beta, R_y_minus_beta;
+
+				R_x_alpha = R_x_alpha_values;
+				R_x_minus_alpha = R_x_minus_alpha_values;
+				R_y_beta = R_y_beta_values;
+				R_y_minus_beta = R_y_minus_beta_values;
+
+				// CALCULATE THE ACTUAL ROTATION MATRIX
+
+				double cos_angle = cos(angle);
+				double sin_angle = sin(angle);
+
+				double R_z_angle_values[4][4] = {
+					{cos_angle, -sin_angle, 0, 0},
+					{sin_angle,  cos_angle, 0, 0},
+					{		 0, 		 0, 0, 0},
+					{		 0, 		 0, 0, 1}
+				};
+
+				Matrix4 R_z_angle;
+				
+				R_z_angle = R_z_angle_values;
+
+				// CALCULATE THE COMPOSITE ROTATION MATRIX
+
+				Matrix4 R;
+				R = multiplyMatrixWithMatrix(R_x_minus_alpha, R_y_beta);
+				R = multiplyMatrixWithMatrix(R, R_z_angle);
+				R = multiplyMatrixWithMatrix(R, R_y_minus_beta);
+				R = multiplyMatrixWithMatrix(R, R_x_alpha);
+				
+				transformations.push_back(R);
+			}
+		}
+
+		// CALCULATE COMPOSITE MATRIX M
+
+		double ones[4][4] = {{1,1,1,1},{1,1,1,1},{1,1,1,1},{1,1,1,1}};
+		Matrix4 M_transform = ones;
+		for(j = 0; j < transformations.size(); j++){
+			Matrix4 m = transformations[j];
+			M_transform = multiplyMatrixWithMatrix(m, M_transform);
+		}
+
+		// APPLY THE COMPOSITE MATRIX M TO ALL VERTICES
+
+		for(j = 0; j < vertices.size(); j++){
+			double x = vertices[j]->x;
+			double y = vertices[j]->y;
+			double z = vertices[j]->z;
+
+			Vec4 point = Vec4(x, y, z, 1);
+
+			Vec4 new_vertex = multiplyMatrixWithVec4(M_transform, point);
+
+			vertices[j]->x = new_vertex.x;
+			vertices[j]->y = new_vertex.y;
+			vertices[j]->z = new_vertex.z;
+		}
+
+		// 1.2 APPLY VIWEING TRANSFORMATIONS
+
+		// TODO: PERFORM CAMERA TRANSFORMATION
+
+		// TRANSLATE "E" TO THE WORLD ORIGIN (0,0,0)
+
+		double e_x, e_y, e_z;
+		e_x = camera->position.x;
+		e_y = camera->position.y;
+		e_z = camera->position.z;
+
+		double translation_values[4][4] = {
+			{1, 0, 0, -e_x},
+			{0, 1, 0, -e_y},
+			{0, 0, 1, -e_z},
+			{0, 0, 0,    1}
+		};
+
+		Matrix4 T;
+		T = translation_values;
+
+		// ROTATE UVW TO ALIGN IT WITH XYZ
+
+		double rotation_values[4][4] = {
+			{u.x, u.y, u.z, 0},
+			{v.x, v.y, v.z, 0},
+			{w.x, w.y, w.z, 0},
+			{  0,   0,   0, 1}
+		};
+
+		Matrix4 R;
+		R = rotation_values;
+
+		// CALCULATE THE COMPOSITE CAMERA TRANSFORMATION MATRIX
+
+		Matrix4 M_cam = multiplyMatrixWithMatrix(R, T);
+
+		// APPLY THE COMPOSITE CAMERA TRANSFORMATION MATRIX TO ALL THE VERTICES
+
+		for(j = 0; j < vertices.size(); j++){
+			double x = vertices[j]->x;
+			double y = vertices[j]->y;
+			double z = vertices[j]->z;
+
+			Vec4 point = Vec4(x, y, z, 1);
+
+			Vec4 new_vertex = multiplyMatrixWithVec4(M_cam, point);
+
+			vertices[j]->x = new_vertex.x;
+			vertices[j]->y = new_vertex.y;
+			vertices[j]->z = new_vertex.z;
+		}
+
+		// PERFORM PERSPECTIVE OR ORTHOGRAPHIC PROJECTION
+
+		Matrix4 M_per;
+		
+		// CALCULATE THE ORTHOGRAPHIC PROJECTION MATRIX
+		
+		double r, l, t, b, n, f;
+		r = camera->right;
+		l = camera->left;
+		t = camera->top;
+		b = camera->bottom;
+		n = camera->near;
+		f = camera->far;
+
+		double M_orth_values[4][4] = {
+			{2 / (r - l), 			0, 			  0,  -((r + l) / (r - l))},
+			{		   0, 2 / (t - b), 			  0,  -((t + b) / (t - b))},
+			{		   0, 			0, -2 / (f - n),  -((f + n) / (f - n))},
+			{		   0, 			0, 			  0, 					 1}
+		};
+
+		Matrix4 M_orth = M_orth_values;
+
+		// IF THE PROJECTION TYPE IS PERSPECTIVE, CALCULATE THE M_P20 MATRIX AS WELL
+
+		if(camera->projectionType == PERSPECTIVE_PROJECTION){
+			double M_p2o_values[4][4] = {
+				{n, 0, 	   0,     0},
+				{0, n, 	   0, 	  0},
+				{0, 0, f + n, f * n},
+				{0, 0, 	  -1, 	  0}
+			};
+
+			Matrix4 M_p2o = M_p2o_values;
+
+			M_per = multiplyMatrixWithMatrix(M_orth, M_p2o);
+		}
+		else{
+			M_per = M_orth;
+		}
+
+		
+
+		double M_per_values[4][4] = {
+			{(2 * n) / (r - l), 				0, 	  (r + l) / (r - l), 						0},
+			{				 0, (2 * n) / (t - b),    (t + b) / (t - b), 						0},
+			{				 0, 				0, -((f + n) / (f - n)), -((2 * f * n) / (f - n))},
+			{				 0, 				0, 					 -1, 						0}
+		};
+
+		Matrix4 M_per = M_per_values;
+
+		// APPLY THE PERSPECTIVE PROJECTION TO ALL THE VERTICES
+
+		for(j = 0; j < vertices.size(); j++){
+			double x = vertices[j]->x;
+			double y = vertices[j]->y;
+			double z = vertices[j]->z;
+
+			Vec4 point = Vec4(x, y, z, 1);
+
+			Vec4 new_vertex = multiplyMatrixWithVec4(M_per, point);
+
+			vertices[j]->x = new_vertex.x / new_vertex.t;
+			vertices[j]->y = new_vertex.y / new_vertex.t;
+			vertices[j]->z = new_vertex.z / new_vertex.t;
+		}
+
+		// 1.3 APPLY VIEWPORT TRANSFORMATION
+
+		int n_x, n_y;
+		n_x = camera->horRes;
+		n_y = camera->verRes;
+
+		double M_vp_values[4][4] = {
+			{n_x / 2, 	    0,   0, (n_x - 1) / 2},
+			{	   0, n_y / 2,   0, (n_y - 1) / 2},
+			{	   0, 		0, 1/2, 		  1/2},
+			{	   0, 		0,   0, 		    0} // TODO: WHAT DO WE PUT IN HERE?
+		};
+	}
+
+	// 2. Perform clipping and culling operations
+	// 3. Rasterize the scene objects onto the image
+
+	// You can add your own code here to implement the forward rendering pipeline
 }
