@@ -352,14 +352,9 @@ void Scene::convertPPMToPNG(string ppmFileName)
 void Scene::forwardRenderingPipeline(Camera *camera)
 {
 
-	Vec3 u = crossProductVec3(camera->gaze, camera->v);
+	/* Vec3 u = crossProductVec3(camera->gaze, camera->v);
 	Vec3 v = crossProductVec3(camera->v, camera->gaze);
-	Vec3 w = inverseVec3(camera->gaze);
-
-	// Perform transformations, clipping, culling, and rasterization here
-	// TODO: Implement the forward rendering pipeline
-
-	// 1. Apply transformations to the scene objects
+	Vec3 w = inverseVec3(camera->gaze); */
 
 	vector<vector<Color> > image = this->image;
 	vector<vector<double> > depth = this->depth;
@@ -371,6 +366,9 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 	vector<Mesh *> meshes = this->meshes;
 
 	for(int i = 0; i < meshes.size(); i++){
+
+		// 1. Apply transformations to the scene objects
+
 		Mesh *mesh = meshes[i];
 		vector<Matrix4> transformations;
 		vector<Vec3> transformed_vertices;
@@ -547,9 +545,9 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 		// ROTATE UVW TO ALIGN IT WITH XYZ
 
 		double rotation_values[4][4] = {
-			{u.x, u.y, u.z, 0},
-			{v.x, v.y, v.z, 0},
-			{w.x, w.y, w.z, 0},
+			{camera->u.x, camera->u.y, camera->u.z, 0},
+			{camera->v.x, camera->v.y, camera->v.z, 0},
+			{camera->w.x, camera->w.y, camera->w.z, 0},
 			{  0,   0,   0, 1}
 		};
 
@@ -589,6 +587,9 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 		b = camera->bottom;
 		n = camera->near;
 		f = camera->far;
+		int n_x, n_y;
+		n_x = camera->horRes;
+		n_y = camera->verRes;
 
 		double M_orth_values[4][4] = {
 			{2 / (r - l), 			0, 			  0,  -((r + l) / (r - l))},
@@ -617,17 +618,6 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 			M_per = M_orth;
 		}
 
-		
-
-		double M_per_values[4][4] = {
-			{(2 * n) / (r - l), 				0, 	  (r + l) / (r - l), 						0},
-			{				 0, (2 * n) / (t - b),    (t + b) / (t - b), 						0},
-			{				 0, 				0, -((f + n) / (f - n)), -((2 * f * n) / (f - n))},
-			{				 0, 				0, 					 -1, 						0}
-		};
-
-		Matrix4 M_per = M_per_values;
-
 		// APPLY THE PERSPECTIVE PROJECTION TO ALL THE VERTICES
 
 		for(j = 0; j < vertices.size(); j++){
@@ -639,6 +629,7 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 
 			Vec4 new_vertex = multiplyMatrixWithVec4(M_per, point);
 
+			// TODO: PERFORM THIS AFTER CLIPPING
 			vertices[j]->x = new_vertex.x / new_vertex.t;
 			vertices[j]->y = new_vertex.y / new_vertex.t;
 			vertices[j]->z = new_vertex.z / new_vertex.t;
@@ -646,20 +637,150 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 
 		// 1.3 APPLY VIEWPORT TRANSFORMATION
 
-		int n_x, n_y;
-		n_x = camera->horRes;
-		n_y = camera->verRes;
-
 		double M_vp_values[4][4] = {
 			{n_x / 2, 	    0,   0, (n_x - 1) / 2},
 			{	   0, n_y / 2,   0, (n_y - 1) / 2},
 			{	   0, 		0, 1/2, 		  1/2},
 			{	   0, 		0,   0, 		    0} // TODO: WHAT DO WE PUT IN HERE?
 		};
+
+		Matrix4 M_vp = M_vp_values;
+
+		// APPLY THE VIEWPORT TRANSFORMATION TO ALL THE VERTICES
+
+		for(j = 0; j < vertices.size(); j++){
+			double x = vertices[j]->x;
+			double y = vertices[j]->y;
+			double z = vertices[j]->z;
+
+			Vec4 point = Vec4(x, y, z, 1);
+
+			Vec4 new_vertex = multiplyMatrixWithVec4(M_vp, point);
+
+			vertices[j]->x = new_vertex.x;
+			vertices[j]->y = new_vertex.y;
+			vertices[j]->z = new_vertex.z;
+		}
+
+		// 2. Perform clipping and culling operations
+		vector<Triangle> faces;
+		for (int j = 0; j < mesh->numberOfTriangles; j++) {
+			Triangle triangle;
+			triangle.vertexIds[0] = mesh->triangles[j].vertexIds[0] - 1;
+			triangle.vertexIds[1] = mesh->triangles[j].vertexIds[1] - 1;
+			triangle.vertexIds[2] = mesh->triangles[j].vertexIds[2] - 1;
+			faces.push_back(triangle);
+		}
+
+		// IF MESH IS WIREFRAME, DO CLIPPING with Liang-Barsky algorithm
+		if (mesh->type == WIREFRAME_MESH) {
+			// Perform line clipping for each triangle in the mesh
+			for (int j = 0; j < faces.size(); j++) {
+				int v0 = faces[j].vertexIds[0];
+				int v1 = faces[j].vertexIds[1];
+				int v2 = faces[j].vertexIds[2];
+
+				Vec3* vertex0 = vertices[v0];
+				Vec3* vertex1 = vertices[v1];
+				Vec3* vertex2 = vertices[v2];
+
+				// Clip the lines of the triangle
+				double tE = 0, tL = 1;
+				bool visible = clipLine(vertex0->x, vertex0->y, vertex0->z, vertex1->x, vertex1->y, vertex1->z, tE, tL, n_x, n_y, n, f);
+				if (visible) {
+					if (tL < 1) {
+						vertex1->x = vertex0->x + (vertex1->x - vertex0->x) * tL;
+						vertex1->y = vertex0->y + (vertex1->y - vertex0->y) * tL;
+						vertex1->z = vertex0->z + (vertex1->z - vertex0->z) * tL;
+					}
+					if (tE > 0) {
+						vertex0->x = vertex0->x + (vertex1->x - vertex0->x) * tE;
+						vertex0->y = vertex0->y + (vertex1->y - vertex0->y) * tE;
+						vertex0->z = vertex0->z + (vertex1->z - vertex0->z) * tE;
+					}
+				}
+
+				visible = clipLine(vertex1->x, vertex1->y, vertex1->z, vertex2->x, vertex2->y, vertex2->z, tE, tL, n_x, n_y, n, f);
+				if (visible) {
+					if (tL < 1) {
+						vertex2->x = vertex1->x + (vertex2->x - vertex1->x) * tL;
+						vertex2->y = vertex1->y + (vertex2->y - vertex1->y) * tL;
+						vertex2->z = vertex1->z + (vertex2->z - vertex1->z) * tL;
+					}
+					if (tE > 0) {
+						vertex1->x = vertex1->x + (vertex2->x - vertex1->x) * tE;
+						vertex1->y = vertex1->y + (vertex2->y - vertex1->y) * tE;
+						vertex1->z = vertex1->z + (vertex2->z - vertex1->z) * tE;
+					}
+				}
+
+				visible = clipLine(vertex2->x, vertex2->y, vertex2->z, vertex0->x, vertex0->y, vertex0->z, tE, tL, n_x, n_y, n, f);
+				if (visible) {
+					if (tL < 1) {
+						vertex0->x = vertex2->x + (vertex0->x - vertex2->x) * tL;
+						vertex0->y = vertex2->y + (vertex0->y - vertex2->y) * tL;
+						vertex0->z = vertex2->z + (vertex0->z - vertex2->z) * tL;
+					}
+					if (tE > 0) {
+						vertex2->x = vertex2->x + (vertex0->x - vertex2->x) * tE;
+						vertex2->y = vertex2->y + (vertex0->y - vertex2->y) * tE;
+						vertex2->z = vertex2->z + (vertex0->z - vertex2->z) * tE;
+					}
+				}
+			}
+		}
+		// Implement backface culling
+		for (int j = 0; j < faces.size(); j++) {
+			int v0 = faces[j].vertexIds[0] - 1;
+			int v1 = faces[j].vertexIds[1] - 1;
+			int v2 = faces[j].vertexIds[2] - 1;
+
+			Vec3* vertex0 = vertices[v0];
+			Vec3* vertex1 = vertices[v1];
+			Vec3* vertex2 = vertices[v2];
+
+			// Calculate the normal of the face
+			Vec3 normal = subtractVec3(*vertex1, *vertex0);
+			normal = crossProductVec3(normal, subtractVec3(*vertex2, *vertex0));
+			normal = normalizeVec3(normal);
+
+			// Calculate the vector from the camera to the face
+			Vec3 cameraToFace = subtractVec3(*vertex0, camera->position);
+
+			// Calculate the dot product of the normal and the vector from the camera to the face
+			double dotProduct = dotProductVec3(normal, cameraToFace);
+
+			// If the dot product is negative, the face is facing away from the camera
+			// and should be culled
+			if (dotProduct < 0) {
+				// Remove the face from the list of faces
+				faces.erase(faces.begin() + j);
+
+				// Decrement the index to account for the removed face
+				j--;
+			}
+		}
+
+		// 3. Rasterize the triangles
+
+		// Initialize the depth buffer
+		vector<vector<double>> depthBuffer;
+		for (int j = 0; j < camera->horRes; j++) {
+			vector<double> row;
+			for (int k = 0; k < camera->verRes; k++) {
+				row.push_back(1.01);
+			}
+			depthBuffer.push_back(row);
+		}
+
+		// Initialize the frame buffer
+		vector<vector<Color>> frameBuffer;
+		for (int j = 0; j < camera->horRes; j++) {
+			vector<Color> row;
+			for (int k = 0; k < camera->verRes; k++) {
+				row.push_back(this->backgroundColor);
+			}
+			frameBuffer.push_back(row);
+		}
 	}
-
-	// 2. Perform clipping and culling operations
-	// 3. Rasterize the scene objects onto the image
-
-	// You can add your own code here to implement the forward rendering pipeline
 }

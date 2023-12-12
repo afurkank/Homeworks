@@ -72,4 +72,9 @@ Matrix4 multiplyMatrixWithMatrix(Matrix4 m1, Matrix4 m2);
  */
 Vec4 multiplyMatrixWithVec4(Matrix4 m, Vec4 v);
 
+bool visible(double den, double num, double tE, double tL);
+
+bool clipLine(double x0, double y0, double z0, double x1, double y1, double z1, double& tE, double& tL,
+int horRes, int verRes, double n, double f);
+
 #endif

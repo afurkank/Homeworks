@@ -164,3 +164,65 @@ Vec4 multiplyMatrixWithVec4(Matrix4 m, Vec4 v)
 
     return Vec4(values[0], values[1], values[2], values[3], v.colorId);
 }
+
+bool visible(double den, double num, double tE, double tL){
+    double t;
+    t = num / den;
+    if(den > 0){
+        if(t > tL) return false;
+        if(t > tE) tE = t;
+    }
+    else if(den < 0){
+        if(t < tE) return false;
+        if(t < tL) tL = t;
+    }
+    else if(num > 0) return false;
+    return true;
+}
+
+// Liang-Barsky line clipping algorithm
+bool clipLine(double x0, double y0, double z0, double x1, double y1, double z1, double& tE, double& tL,
+int horRes, int verRes, double n, double f) {
+    double dx = x1 - x0;
+    double dy = y1 - y0;
+    double dz = z1 - z0;
+
+    double p[6] = {-dx, dx, -dy, dy, -dz, dz};
+    double x_min = 0.0;
+    double x_max = horRes;
+    double y_min = 0.0;
+    double y_max = verRes;
+    double z_min = n;
+    double z_max = f;
+
+    double q[6] = {x0 - x_min, x_max - x0, y0 - y_min, y_max - y0, z0 - z_min, z_max - z0};
+
+    for (int i = 0; i < 6; i++) {
+        if (p[i] == 0) {
+            if (q[i] < 0) {
+                return false; // Line is outside the clipping window
+            }
+        }
+        else {
+            double t = q[i] / p[i];
+            if (p[i] < 0) {
+                if (t > tL) {
+                    return false; // Line is outside the clipping window
+                }
+                else if (t > tE) {
+                    tE = t; // Update the entry point
+                }
+            }
+            else {
+                if (t < tE) {
+                    return false; // Line is outside the clipping window
+                }
+                else if (t < tL) {
+                    tL = t; // Update the exit point
+                }
+            }
+        }
+    }
+
+    return true; // Line is inside the clipping window
+}
