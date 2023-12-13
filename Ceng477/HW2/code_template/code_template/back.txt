@@ -42,3 +42,19 @@ for(int j = 0; j < faces.size(); j++){
         }
     }
 }
+
+
+bool visible(double den, double num, double tE, double tL){
+    double t;
+    t = num / den;
+    if(den > 0){
+        if(t > tL) return false;
+        if(t > tE) tE = t;
+    }
+    else if(den < 0){
+        if(t < tE) return false;
+        if(t < tL) tL = t;
+    }
+    else if(num > 0) return false;
+    return true;
+}

@@ -5,6 +5,7 @@
 #include "Matrix4.h"
 #include "Vec3.h"
 #include "Vec4.h"
+#include "Color.h"
 
 /*
  * Calculate cross product of vec3 a, vec3 b and return resulting vec3.
@@ -72,7 +73,29 @@ Matrix4 multiplyMatrixWithMatrix(Matrix4 m1, Matrix4 m2);
  */
 Vec4 multiplyMatrixWithVec4(Matrix4 m, Vec4 v);
 
-bool visible(double den, double num, double tE, double tL);
+// COLOR HELPERS
+
+/*
+* Subtract Color c2 from Color c1 and return the result as another color.
+*/
+Color subtractColor(Color c1, Color c2);
+
+/*
+* Add Color c1 to Color c2 and return the result as another color.
+*/
+Color addColor(Color c1, Color c2);
+
+/*
+* Divide Color c by double s and return the divided number.
+*/
+Color divideColor(Color c, double s);
+
+/*
+* Round the given Color c and return the rounded color.
+*/
+Color roundColor(Color c);
+
+// CLIPPING HELPER
 
 bool clipLine(double x0, double y0, double z0, double x1, double y1, double z1, double& tE, double& tL,
 int horRes, int verRes, double n, double f);

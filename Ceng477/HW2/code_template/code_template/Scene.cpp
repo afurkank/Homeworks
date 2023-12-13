@@ -521,9 +521,9 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 			vertices[j]->z = new_vertex.z;
 		}
 
-		// 1.2 APPLY VIWEING TRANSFORMATIONS
+		// APPLY VIWEING TRANSFORMATIONS
 
-		// TODO: PERFORM CAMERA TRANSFORMATION
+		// PERFORM CAMERA TRANSFORMATION
 
 		// TRANSLATE "E" TO THE WORLD ORIGIN (0,0,0)
 
@@ -619,7 +619,7 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 		}
 
 		// APPLY THE PERSPECTIVE PROJECTION TO ALL THE VERTICES
-
+		vector<double> w_values;
 		for(j = 0; j < vertices.size(); j++){
 			double x = vertices[j]->x;
 			double y = vertices[j]->y;
@@ -629,14 +629,88 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 
 			Vec4 new_vertex = multiplyMatrixWithVec4(M_per, point);
 
-			// TODO: PERFORM THIS AFTER CLIPPING
-			vertices[j]->x = new_vertex.x / new_vertex.t;
-			vertices[j]->y = new_vertex.y / new_vertex.t;
-			vertices[j]->z = new_vertex.z / new_vertex.t;
+			vertices[j]->x = new_vertex.x;
+			vertices[j]->y = new_vertex.y;
+			vertices[j]->z = new_vertex.z;
+			w_values.push_back(new_vertex.t);
 		}
 
-		// 1.3 APPLY VIEWPORT TRANSFORMATION
+		// Perform clipping and culling operations
+		vector<Triangle> faces;
+		for (int j = 0; j < mesh->numberOfTriangles; j++) {
+			Triangle triangle;
+			triangle.vertexIds[0] = mesh->triangles[j].vertexIds[0] - 1;
+			triangle.vertexIds[1] = mesh->triangles[j].vertexIds[1] - 1;
+			triangle.vertexIds[2] = mesh->triangles[j].vertexIds[2] - 1;
+			faces.push_back(triangle);
+		}
 
+		// IF MESH IS WIREFRAME, DO CLIPPING with Liang-Barsky algorithm
+		if (mesh->type == WIREFRAME_MESH) {
+			// Perform line clipping for each triangle in the mesh
+			for (int j = 0; j < faces.size(); j++) {
+				int v0 = faces[j].vertexIds[0] - 1;
+				int v1 = faces[j].vertexIds[1] - 1;
+				int v2 = faces[j].vertexIds[2] - 1;
+
+				Vec3* vertex0 = vertices[v0];
+				Vec3* vertex1 = vertices[v1];
+				Vec3* vertex2 = vertices[v2];
+
+				// Clip the lines of the triangle
+				double tE = 0, tL = 1;
+				bool visible = clipLine(vertex0->x, vertex0->y, vertex0->z, vertex1->x, vertex1->y, vertex1->z, tE, tL, n_x, n_y, n, f);
+				if (visible) {
+					if (tL < 1) {
+						vertices[v1]->x = vertex0->x + (vertex1->x - vertex0->x) * tL;
+						vertices[v1]->y = vertex0->y + (vertex1->y - vertex0->y) * tL;
+						vertices[v1]->z = vertex0->z + (vertex1->z - vertex0->z) * tL;
+					}
+					if (tE > 0) {
+						vertices[v0]->x = vertex0->x + (vertex1->x - vertex0->x) * tE;
+						vertices[v0]->y = vertex0->y + (vertex1->y - vertex0->y) * tE;
+						vertices[v0]->z = vertex0->z + (vertex1->z - vertex0->z) * tE;
+					}
+				}
+
+				visible = clipLine(vertex1->x, vertex1->y, vertex1->z, vertex2->x, vertex2->y, vertex2->z, tE, tL, n_x, n_y, n, f);
+				if (visible) {
+					if (tL < 1) {
+						vertices[v2]->x = vertex1->x + (vertex2->x - vertex1->x) * tL;
+						vertices[v2]->y = vertex1->y + (vertex2->y - vertex1->y) * tL;
+						vertices[v2]->z = vertex1->z + (vertex2->z - vertex1->z) * tL;
+					}
+					if (tE > 0) {
+						vertices[v1]->x = vertex1->x + (vertex2->x - vertex1->x) * tE;
+						vertices[v1]->y = vertex1->y + (vertex2->y - vertex1->y) * tE;
+						vertices[v1]->z = vertex1->z + (vertex2->z - vertex1->z) * tE;
+					}
+				}
+
+				visible = clipLine(vertex2->x, vertex2->y, vertex2->z, vertex0->x, vertex0->y, vertex0->z, tE, tL, n_x, n_y, n, f);
+				if (visible) {
+					if (tL < 1) {
+						vertices[v0]->x = vertex2->x + (vertex0->x - vertex2->x) * tL;
+						vertices[v0]->y = vertex2->y + (vertex0->y - vertex2->y) * tL;
+						vertices[v0]->z = vertex2->z + (vertex0->z - vertex2->z) * tL;
+					}
+					if (tE > 0) {
+						vertices[v2]->x = vertex2->x + (vertex0->x - vertex2->x) * tE;
+						vertices[v2]->y = vertex2->y + (vertex0->y - vertex2->y) * tE;
+						vertices[v2]->z = vertex2->z + (vertex0->z - vertex2->z) * tE;
+					}
+				}
+			}
+		}
+
+		// DO PERSPECTIVE DIVIDE
+		for(j = 0; j < vertices.size(); j++){
+			vertices[j]->x /= w_values[j];
+			vertices[j]->y /= w_values[j];
+			vertices[j]->z /= w_values[j];
+		}
+
+		// CALCULATE VIEWPORT TRANSFORMATION MATRIX
 		double M_vp_values[4][4] = {
 			{n_x / 2, 	    0,   0, (n_x - 1) / 2},
 			{	   0, n_y / 2,   0, (n_y - 1) / 2},
@@ -662,73 +736,6 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 			vertices[j]->z = new_vertex.z;
 		}
 
-		// 2. Perform clipping and culling operations
-		vector<Triangle> faces;
-		for (int j = 0; j < mesh->numberOfTriangles; j++) {
-			Triangle triangle;
-			triangle.vertexIds[0] = mesh->triangles[j].vertexIds[0] - 1;
-			triangle.vertexIds[1] = mesh->triangles[j].vertexIds[1] - 1;
-			triangle.vertexIds[2] = mesh->triangles[j].vertexIds[2] - 1;
-			faces.push_back(triangle);
-		}
-
-		// IF MESH IS WIREFRAME, DO CLIPPING with Liang-Barsky algorithm
-		if (mesh->type == WIREFRAME_MESH) {
-			// Perform line clipping for each triangle in the mesh
-			for (int j = 0; j < faces.size(); j++) {
-				int v0 = faces[j].vertexIds[0];
-				int v1 = faces[j].vertexIds[1];
-				int v2 = faces[j].vertexIds[2];
-
-				Vec3* vertex0 = vertices[v0];
-				Vec3* vertex1 = vertices[v1];
-				Vec3* vertex2 = vertices[v2];
-
-				// Clip the lines of the triangle
-				double tE = 0, tL = 1;
-				bool visible = clipLine(vertex0->x, vertex0->y, vertex0->z, vertex1->x, vertex1->y, vertex1->z, tE, tL, n_x, n_y, n, f);
-				if (visible) {
-					if (tL < 1) {
-						vertex1->x = vertex0->x + (vertex1->x - vertex0->x) * tL;
-						vertex1->y = vertex0->y + (vertex1->y - vertex0->y) * tL;
-						vertex1->z = vertex0->z + (vertex1->z - vertex0->z) * tL;
-					}
-					if (tE > 0) {
-						vertex0->x = vertex0->x + (vertex1->x - vertex0->x) * tE;
-						vertex0->y = vertex0->y + (vertex1->y - vertex0->y) * tE;
-						vertex0->z = vertex0->z + (vertex1->z - vertex0->z) * tE;
-					}
-				}
-
-				visible = clipLine(vertex1->x, vertex1->y, vertex1->z, vertex2->x, vertex2->y, vertex2->z, tE, tL, n_x, n_y, n, f);
-				if (visible) {
-					if (tL < 1) {
-						vertex2->x = vertex1->x + (vertex2->x - vertex1->x) * tL;
-						vertex2->y = vertex1->y + (vertex2->y - vertex1->y) * tL;
-						vertex2->z = vertex1->z + (vertex2->z - vertex1->z) * tL;
-					}
-					if (tE > 0) {
-						vertex1->x = vertex1->x + (vertex2->x - vertex1->x) * tE;
-						vertex1->y = vertex1->y + (vertex2->y - vertex1->y) * tE;
-						vertex1->z = vertex1->z + (vertex2->z - vertex1->z) * tE;
-					}
-				}
-
-				visible = clipLine(vertex2->x, vertex2->y, vertex2->z, vertex0->x, vertex0->y, vertex0->z, tE, tL, n_x, n_y, n, f);
-				if (visible) {
-					if (tL < 1) {
-						vertex0->x = vertex2->x + (vertex0->x - vertex2->x) * tL;
-						vertex0->y = vertex2->y + (vertex0->y - vertex2->y) * tL;
-						vertex0->z = vertex2->z + (vertex0->z - vertex2->z) * tL;
-					}
-					if (tE > 0) {
-						vertex2->x = vertex2->x + (vertex0->x - vertex2->x) * tE;
-						vertex2->y = vertex2->y + (vertex0->y - vertex2->y) * tE;
-						vertex2->z = vertex2->z + (vertex0->z - vertex2->z) * tE;
-					}
-				}
-			}
-		}
 		// Implement backface culling
 		for (int j = 0; j < faces.size(); j++) {
 			int v0 = faces[j].vertexIds[0] - 1;
@@ -761,9 +768,75 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 			}
 		}
 
-		// 3. Rasterize the triangles
+		// PERFORM RASTERIZATION
 
-		// Initialize the depth buffer
+		// If mesh is of type wireframe, perform line rasterization and color interpolation
+		// use the midpoint algorithm for line rasterization
+
+		if(mesh->type == WIREFRAME_MESH){
+			for (int j = 0; j < faces.size(); j++){
+				Vec3* vertex0 = vertices[faces[j].vertexIds[0]] - 1;
+				Vec3* vertex1 = vertices[faces[j].vertexIds[1]] - 1;
+				Vec3* vertex2 = vertices[faces[j].vertexIds[2]] - 1;
+
+				Color c, c0, c1, dc;
+				double x, y;
+				double x0, x1, y0, y1;
+				double d;
+
+				// Rasterize the line from vertex0 to vertex1
+				x0 = (vertex0->x < vertex1->x) ? vertex0->x : vertex1->x;
+				x1 = (vertex0->x > vertex1->x) ? vertex1->x : vertex0->x;
+				y0 = (vertex0->y < vertex1->y) ? vertex0->y : vertex1->y;
+				y1 = (vertex0->y > vertex1->y) ? vertex1->y : vertex0->y;
+
+				x = x0; y = y0;
+
+				d = 2 * (y0 - y1) + (x1 - x0);
+
+				c0 = *(this->colorsOfVertices[vertex0->colorId]);
+				c1 = *(this->colorsOfVertices[vertex0->colorId]);
+
+				c = c0;
+
+				dc = divideColor(subtractColor(c1, c0), (x1 - x0));
+				while(x < x1){
+				
+					// round(c)
+					int r, g, b;
+					Color roundedColor = roundColor(c);
+					r = roundedColor.r; g = roundedColor.g; b = roundedColor.b;
+
+					// make color values between 0 and 255
+					r = makeBetweenZeroAnd255(r);
+					g = makeBetweenZeroAnd255(g);
+					b = makeBetweenZeroAnd255(b);
+
+					Color color = Color(r, g, b);
+
+					// image[x][y] = color
+					assignColorToPixel(int(x), int(y), color);
+
+					if(d < 0){
+						y = y+1;
+						d += 2 * ((y0 - y1) + (x1 - x0));
+					}
+					else{
+						d += 2 * (y0 - y1);
+					}
+
+					c = addColor(c, dc);
+				}
+			}
+		}
+
+		// Else, perform triangle rasterization
+		// use barycentric coordinates for color interpolation
+		else{
+
+		}
+
+		/* // Initialize the depth buffer
 		vector<vector<double>> depthBuffer;
 		for (int j = 0; j < camera->horRes; j++) {
 			vector<double> row;
@@ -781,6 +854,6 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 				row.push_back(this->backgroundColor);
 			}
 			frameBuffer.push_back(row);
-		}
+		} */
 	}
 }
