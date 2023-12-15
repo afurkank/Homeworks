@@ -190,13 +190,24 @@ Color addColor(Color c1, Color c2){
 }
 
 /*
-* Divide Color c by double s and return the divided number.
+* Divide Color c by double s and return the divided color.
 */
 Color divideColor(Color c, double s){
     double r, g, b;
     r = c.r / s;
     g = c.g / s;
     b = c.b / s;
+    return Color(r, g, b);
+}
+
+/*
+* Multiply Color c with double s and return the multiplied color.
+*/
+Color multiplyColor(Color c, double s){
+    double r, g, b;
+    r = c.r * s;
+    g = c.g * s;
+    b = c.b * s;
     return Color(r, g, b);
 }
 
@@ -209,34 +220,4 @@ Color roundColor(Color c){
     g = round(c.g);
     b = round(c.b);
     return Color(r, g, b);
-}
-
-// CLIPPING HELPER
-
-// Liang-Barsky line clipping algorithm
-bool clipLine(double x0, double y0, double z0, double x1, double y1, double z1, double& tE, double& tL,
-int horRes, int verRes, double n, double f) {
-    double dx = x1 - x0;
-    double dy = y1 - y0;
-    double dz = z1 - z0;
-
-    double x_min = 0.0, x_max = horRes, y_min = 0.0, y_max = verRes, z_min = n, z_max = f;
-
-    double denominators[6] = {-dx, dx, -dy, dy, -dz, dz};
-    double numerators[6] = {x0 - x_min, x_max - x0, y0 - y_min, y_max - y0, z0 - z_min, z_max - z0};
-
-    for (int i = 0; i < 6; i++) {
-        if (denominators[i] == 0 && numerators[i] < 0) return false;
-        double t = numerators[i] / denominators[i];
-        if (denominators[i] < 0) {
-            if (t > tL) return false;
-            else if (t > tE) tE = t;
-        }
-        else {
-            if (t < tE) return false;
-            else if (t < tL) tL = t;
-        }
-    }
-
-    return true;
 }

@@ -91,13 +91,13 @@ Color addColor(Color c1, Color c2);
 Color divideColor(Color c, double s);
 
 /*
+* Multiply Color c with double s and return the multiplied color.
+*/
+Color multiplyColor(Color c, double s);
+
+/*
 * Round the given Color c and return the rounded color.
 */
 Color roundColor(Color c);
-
-// CLIPPING HELPER
-
-bool clipLine(double x0, double y0, double z0, double x1, double y1, double z1, double& tE, double& tL,
-int horRes, int verRes, double n, double f);
 
 #endif

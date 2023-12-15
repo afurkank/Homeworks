@@ -11,6 +11,7 @@
 #include "Triangle.h"
 #include "Helpers.h"
 #include "Scene.h"
+#include "Line.h"
 
 #include <iostream>
 
@@ -113,6 +114,127 @@ Matrix4 get_rotation_matrix(Rotation *rotation){
 	return R;
 }
 
+Matrix4 get_cam_translation_matrix(Camera *camera){
+	double e_x, e_y, e_z;
+	e_x = camera->position.x;
+	e_y = camera->position.y;
+	e_z = camera->position.z;
+
+	double translate_camera[4][4] = {
+		{1, 0, 0, -e_x},
+		{0, 1, 0, -e_y},
+		{0, 0, 1, -e_z},
+		{0, 0, 0,    1}
+	};
+
+	// ROTATE UVW TO ALIGN IT WITH XYZ
+	double rotate_camera[4][4] = {
+		{camera->u.x, camera->u.y, camera->u.z, 0},
+		{camera->v.x, camera->v.y, camera->v.z, 0},
+		{camera->w.x, camera->w.y, camera->w.z, 0},
+		{  0,   0,   0, 1}
+	};
+
+	// CALCULATE THE COMPOSITE CAMERA TRANSFORMATION MATRIX
+	Matrix4 M_cam = multiplyMatrixWithMatrix(rotate_camera, translate_camera);
+	return M_cam;
+}
+
+Matrix4 get_perspective_proj_matrix(Camera *camera){
+	Matrix4 M_per;
+	// CALCULATE THE ORTHOGRAPHIC PROJECTION MATRIX
+	double r, l, t, b, n, f;
+	r = camera->right;
+	l = camera->left;
+	t = camera->top;
+	b = camera->bottom;
+	n = camera->near;
+	f = camera->far;
+
+	double M_orth[4][4] = {
+		{2 / (r - l), 			0, 			  0,  -((r + l) / (r - l))},
+		{		   0, 2 / (t - b), 			  0,  -((t + b) / (t - b))},
+		{		   0, 			0, -2 / (f - n),  -((f + n) / (f - n))},
+		{		   0, 			0, 			  0, 					 1}
+	};
+
+	// IF THE PROJECTION TYPE IS PERSPECTIVE, CALCULATE THE M_P20 MATRIX AS WELL
+	if(camera->projectionType == PERSPECTIVE_PROJECTION){
+		double M_p2o[4][4] = {
+			{n, 0, 	   0,     0},
+			{0, n, 	   0, 	  0},
+			{0, 0, f + n, f * n},
+			{0, 0, 	  -1, 	  0}
+		};
+
+		M_per = multiplyMatrixWithMatrix(M_orth, M_p2o);
+	}
+	else{
+		M_per = M_orth;
+	}
+}
+
+// Liang-Barsky line clipping algorithm
+bool clipLine(Line &line, double &tE, double &tL, Camera *camera) {
+	Vec4 v0, v1;
+	v0 = line.v0; v1 = line.v1;
+	Color c0, c1;
+	c0 = line.c0; c1 = line.c1;
+    double dx = v1.x - v0.x;
+    double dy = v1.y - v0.y;
+    double dz = v1.z - v0.z;
+	Color dc = subtractColor(c1, c0);
+
+    double x_min = -1, x_max = 1, y_min = -1, y_max = 1, z_min = -1, z_max = 1;
+	/*double x_min = 0.0, x_max = camera->horRes, y_min = 0.0, y_max = camera->verRes, z_min = camera->near, z_max = camera->far;*/
+    double denominators[6] = {dx, -dx, dy, -dy, dz, -dz};
+    double numerators[6] = {x_min - v0.x, v0.x - x_max, y_min - v0.y, v0.y - y_max, z_min - v0.z, v0.z - z_max};
+
+    for (int i = 0; i < 6; i++) {
+		double den, num, t;
+		den = denominators[i]; num = numerators[i];
+		t = num / den;
+
+		if(den > 0){
+			if(t > tL) return false;
+			else if(t > tE) tE = t;
+		}
+		else if(den < 0){
+			if(t < tE) return false;
+			else if(t < tL) tL = t;
+		}
+		else if(num > 0) return false;
+
+	}
+
+	if(tL < 1){
+		line.v1.x = v0.x + (dx * tL);
+		line.v1.y = v0.y + (dy * tL);
+		line.v1.z = v0.z + (dz * tL);
+		c1 = addColor(c0, multiplyColor(dc, tL));
+	}
+	if(tE > 0){
+		line.v0.x = v0.x + (dx * tE);
+		line.v0.y = v0.y + (dy * tE);
+		line.v0.z = v0.z + (dz * tE);
+		c0 = addColor(c0, multiplyColor(dc, tE));
+	}
+	
+    return true;
+}
+
+/*return true;
+
+if (denominators[i] == 0 && numerators[i] < 0) return false;
+double t = numerators[i] / denominators[i];
+if (denominators[i] < 0) {
+	if (t > tL) return false;
+	else if (t > tE) tE = t;
+}
+else {
+	if (t < tE) return false;
+	else if (t < tL) tL = t;
+}*/
 /*
 	Transformations, clipping, culling, rasterization are done here.
 */
@@ -126,14 +248,20 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 	vector<Rotation *> rotations = this->rotations;
 	vector<Translation *> translations = this->translations;
 	vector<Mesh *> meshes = this->meshes;
+	
+	int n_x, n_y;
+	n_x = camera->horRes;
+	n_y = camera->verRes;
+	
 	for(int i = 0; i < meshes.size(); i++){
-		// 1. Apply transformations to the scene objects
 		Mesh *mesh = meshes[i];
 		vector<Matrix4> transformations;
 		vector<Vec3> transformed_vertices;
+
 		int j = 0;
+		
 		// CALCULATE COMPOSITE MODELING TRANSFORMATION MATRIX
-		Matrix4 M_modeling = getIdentityMatrix();
+		Matrix4 M_model_matrix = getIdentityMatrix();
 		for(; j < mesh->numberOfTransformations; j++){
 			int transformationId = mesh->transformationIds[j] - 1;
 
@@ -141,220 +269,97 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 				// TRANSLATION
 				Translation *translation = translations[transformationId];
 				Matrix4 translation_matrix = get_translation_matrix(translation);
-				M_modeling = multiplyMatrixWithMatrix(translation_matrix, M_modeling);
+				M_model_matrix = multiplyMatrixWithMatrix(translation_matrix, M_model_matrix);
 			}
 			else if(mesh->transformationTypes[j] == 's'){
 				// SCALING
 				Scaling *scaling = scalings[transformationId];
 				Matrix4 scaling_matrix = get_scaling_matrix(scaling);
-				M_modeling = multiplyMatrixWithMatrix(scaling_matrix, M_modeling);
+				M_model_matrix = multiplyMatrixWithMatrix(scaling_matrix, M_model_matrix);
 			}
 			else{
 				Rotation *rotation = rotations[transformationId];
 				Matrix4 rotation_matrix = get_rotation_matrix(rotation);
-				M_modeling = multiplyMatrixWithMatrix(rotation_matrix, M_modeling);
+				M_model_matrix = multiplyMatrixWithMatrix(rotation_matrix, M_model_matrix);
 			}
 		}
 		cout << "b" << endl;
-
-		// APPLY THE COMPOSITE MATRIX M TO ALL VERTICES
-		for(j = 0; j < vertices.size(); j++){
-			double x = vertices[j]->x;
-			double y = vertices[j]->y;
-			double z = vertices[j]->z;
-
-			Vec4 point = Vec4(x, y, z, 1);
-
-			Vec4 new_vertex = multiplyMatrixWithVec4(M_modeling, point);
-
-			vertices[j]->x = new_vertex.x;
-			vertices[j]->y = new_vertex.y;
-			vertices[j]->z = new_vertex.z;
-		}
-
 		// APPLY VIWEING TRANSFORMATIONS
-
-		// PERFORM CAMERA TRANSFORMATION
-
-		// TRANSLATE "E" TO THE WORLD ORIGIN (0,0,0)
-
-		double e_x, e_y, e_z;
-		e_x = camera->position.x;
-		e_y = camera->position.y;
-		e_z = camera->position.z;
-
-		double translation_values[4][4] = {
-			{1, 0, 0, -e_x},
-			{0, 1, 0, -e_y},
-			{0, 0, 1, -e_z},
-			{0, 0, 0,    1}
-		};
-
-		Matrix4 translate_camera;
-		translate_camera = translation_values;
-
-		// ROTATE UVW TO ALIGN IT WITH XYZ
-
-		double rotation_values[4][4] = {
-			{camera->u.x, camera->u.y, camera->u.z, 0},
-			{camera->v.x, camera->v.y, camera->v.z, 0},
-			{camera->w.x, camera->w.y, camera->w.z, 0},
-			{  0,   0,   0, 1}
-		};
-
-		Matrix4 rotate_camera;
-		rotate_camera = rotation_values;
-
-		// CALCULATE THE COMPOSITE CAMERA TRANSFORMATION MATRIX
-
-		Matrix4 M_cam = multiplyMatrixWithMatrix(rotate_camera, translate_camera);
-
-		// APPLY THE COMPOSITE CAMERA TRANSFORMATION MATRIX TO ALL THE VERTICES
-
-		for(j = 0; j < vertices.size(); j++){
-			double x = vertices[j]->x;
-			double y = vertices[j]->y;
-			double z = vertices[j]->z;
-
-			Vec4 point = Vec4(x, y, z, 1);
-
-			Vec4 new_vertex = multiplyMatrixWithVec4(M_cam, point);
-
-			vertices[j]->x = new_vertex.x;
-			vertices[j]->y = new_vertex.y;
-			vertices[j]->z = new_vertex.z;
-		}
-
+		Matrix4 M_cam_translation = get_cam_translation_matrix(camera);
 		// PERFORM PERSPECTIVE OR ORTHOGRAPHIC PROJECTION
-
-		Matrix4 M_per;
-		
-		// CALCULATE THE ORTHOGRAPHIC PROJECTION MATRIX
-		
-		double r, l, t, b, n, f;
-		r = camera->right;
-		l = camera->left;
-		t = camera->top;
-		b = camera->bottom;
-		n = camera->near;
-		f = camera->far;
-		int n_x, n_y;
-		n_x = camera->horRes;
-		n_y = camera->verRes;
-
-		double M_orth[4][4] = {
-			{2 / (r - l), 			0, 			  0,  -((r + l) / (r - l))},
-			{		   0, 2 / (t - b), 			  0,  -((t + b) / (t - b))},
-			{		   0, 			0, -2 / (f - n),  -((f + n) / (f - n))},
-			{		   0, 			0, 			  0, 					 1}
-		};
-
-		// IF THE PROJECTION TYPE IS PERSPECTIVE, CALCULATE THE M_P20 MATRIX AS WELL
-		if(camera->projectionType == PERSPECTIVE_PROJECTION){
-			double M_p2o[4][4] = {
-				{n, 0, 	   0,     0},
-				{0, n, 	   0, 	  0},
-				{0, 0, f + n, f * n},
-				{0, 0, 	  -1, 	  0}
-			};
-
-			M_per = multiplyMatrixWithMatrix(M_orth, M_p2o);
-		}
-		else{
-			M_per = M_orth;
-		}
-
-		// APPLY THE PERSPECTIVE PROJECTION TO ALL THE VERTICES
-		vector<double> w_values;
-		for(j = 0; j < vertices.size(); j++){
-			double x = vertices[j]->x;
-			double y = vertices[j]->y;
-			double z = vertices[j]->z;
-
-			Vec4 point = Vec4(x, y, z, 1);
-
-			Vec4 new_vertex = multiplyMatrixWithVec4(M_per, point);
-
-			vertices[j]->x = new_vertex.x;
-			vertices[j]->y = new_vertex.y;
-			vertices[j]->z = new_vertex.z;
-			w_values.push_back(new_vertex.t);
-		}
-
-		// Perform clipping and culling operations
-		vector<Triangle> faces;
+		Matrix4 M_proj_matrix = get_perspective_proj_matrix(camera);
+		// CALCULATE THE COMPOSITE MATRIX
+		Matrix4 M_composite = multiplyMatrixWithMatrix(M_proj_matrix, multiplyMatrixWithMatrix(M_cam_translation, M_model_matrix));
+		// PERFORM CLIPPING AND CULLING OPERATIONS
 		for (int j = 0; j < mesh->numberOfTriangles; j++) {
-			Triangle triangle;
-			triangle.vertexIds[0] = mesh->triangles[j].vertexIds[0] - 1;
-			triangle.vertexIds[1] = mesh->triangles[j].vertexIds[1] - 1;
-			triangle.vertexIds[2] = mesh->triangles[j].vertexIds[2] - 1;
-			faces.push_back(triangle);
-		}
+			Triangle triangle = mesh->triangles[j];
+			Vec3 *v0, *v1, *v2;
+			v0 = this->vertices[triangle.vertexIds[0]-1];
+			v1 = this->vertices[triangle.vertexIds[1]-1];
+			v2 = this->vertices[triangle.vertexIds[2]-1];
 
-		// IF MESH IS WIREFRAME, DO CLIPPING with Liang-Barsky algorithm
-		if (mesh->type == WIREFRAME_MESH) {
-			// Perform line clipping for each triangle in the mesh
-			for (int j = 0; j < faces.size(); j++) {
-				int v0 = faces[j].vertexIds[0] - 1;
-				int v1 = faces[j].vertexIds[1] - 1;
-				int v2 = faces[j].vertexIds[2] - 1;
+			Vec4 vertex0, vertex1, vertex2;
+			vertex0 = Vec4(v0->x, v0->y, v0->z, 1);
+			vertex1 = Vec4(v1->x, v1->y, v1->z, 1);
+			vertex2 = Vec4(v2->x, v2->y, v2->z, 1);
+			vertex0.colorId = v0->colorId;
+			vertex1.colorId = v1->colorId;
+			vertex2.colorId = v2->colorId;
+			vertex0 = multiplyMatrixWithVec4(M_composite, vertex0);
+			vertex1 = multiplyMatrixWithVec4(M_composite, vertex1);
+			vertex2 = multiplyMatrixWithVec4(M_composite, vertex2);
 
-				Vec3* vertex0 = vertices[v0];
-				Vec3* vertex1 = vertices[v1];
-				Vec3* vertex2 = vertices[v2];
-
+			if(mesh->type == WIREFRAME_MESH){
 				// Clip the lines of the triangle
 				double tE = 0, tL = 1;
-				bool visible = clipLine(vertex0->x, vertex0->y, vertex0->z, vertex1->x, vertex1->y, vertex1->z, tE, tL, n_x, n_y, n, f);
+				Color *c0, *c1, *c2;
+				c0 = this->colorsOfVertices[vertex0.colorId - 1];
+				c1 = this->colorsOfVertices[vertex1.colorId - 1];
+				c2 = this->colorsOfVertices[vertex2.colorId - 1];
+				Line line1 = Line(vertex0, vertex1, *c0, *c1);
+				Line line2 = Line(vertex1, vertex2, *c1, *c2);
+				Line line3 = Line(vertex2, vertex0, *c2, *c0);
+				bool visible = clipLine(line1, tE, tL, camera);
 				if (visible) {
 					if (tL < 1) {
-						vertices[v1]->x = vertex0->x + (vertex1->x - vertex0->x) * tL;
-						vertices[v1]->y = vertex0->y + (vertex1->y - vertex0->y) * tL;
-						vertices[v1]->z = vertex0->z + (vertex1->z - vertex0->z) * tL;
+						line1.v1.x = vertex0.x + (vertex1.x - vertex0.x) * tL;
+						line1.v1.y = vertex0.y + (vertex1.y - vertex0.y) * tL;
+						line1.v1.z = vertex0.z + (vertex1.z - vertex0.z) * tL;
 					}
 					if (tE > 0) {
-						vertices[v0]->x = vertex0->x + (vertex1->x - vertex0->x) * tE;
-						vertices[v0]->y = vertex0->y + (vertex1->y - vertex0->y) * tE;
-						vertices[v0]->z = vertex0->z + (vertex1->z - vertex0->z) * tE;
+						line1.v0.x = vertex0.x + (vertex1.x - vertex0.x) * tE;
+						line1.v0.y = vertex0.y + (vertex1.y - vertex0.y) * tE;
+						line1.v0.z = vertex0.z + (vertex1.z - vertex0.z) * tE;
 					}
 				}
 
-				visible = clipLine(vertex1->x, vertex1->y, vertex1->z, vertex2->x, vertex2->y, vertex2->z, tE, tL, n_x, n_y, n, f);
+				visible = clipLine(line2, tE, tL, camera);
 				if (visible) {
 					if (tL < 1) {
-						vertices[v2]->x = vertex1->x + (vertex2->x - vertex1->x) * tL;
-						vertices[v2]->y = vertex1->y + (vertex2->y - vertex1->y) * tL;
-						vertices[v2]->z = vertex1->z + (vertex2->z - vertex1->z) * tL;
+						line1.v1.x = vertex1.x + (vertex2.x - vertex1.x) * tL;
+						line1.v1.y = vertex1.y + (vertex2.y - vertex1.y) * tL;
+						line1.v1.z = vertex1.z + (vertex2.z - vertex1.z) * tL;
 					}
 					if (tE > 0) {
-						vertices[v1]->x = vertex1->x + (vertex2->x - vertex1->x) * tE;
-						vertices[v1]->y = vertex1->y + (vertex2->y - vertex1->y) * tE;
-						vertices[v1]->z = vertex1->z + (vertex2->z - vertex1->z) * tE;
+						line1.v0.x = vertex1.x + (vertex2.x - vertex1.x) * tE;
+						line1.v0.y = vertex1.y + (vertex2.y - vertex1.y) * tE;
+						line1.v0.z = vertex1.z + (vertex2.z - vertex1.z) * tE;
 					}
 				}
 
-				visible = clipLine(vertex2->x, vertex2->y, vertex2->z, vertex0->x, vertex0->y, vertex0->z, tE, tL, n_x, n_y, n, f);
+				visible = clipLine(line3, tE, tL, camera);
 				if (visible) {
 					if (tL < 1) {
-						vertices[v0]->x = vertex2->x + (vertex0->x - vertex2->x) * tL;
-						vertices[v0]->y = vertex2->y + (vertex0->y - vertex2->y) * tL;
-						vertices[v0]->z = vertex2->z + (vertex0->z - vertex2->z) * tL;
+						line1.v1.x = vertex2.x + (vertex0.x - vertex2.x) * tL;
+						line1.v1.y = vertex2.y + (vertex0.y - vertex2.y) * tL;
+						line1.v1.z = vertex2.z + (vertex0.z - vertex2.z) * tL;
 					}
 					if (tE > 0) {
-						vertices[v2]->x = vertex2->x + (vertex0->x - vertex2->x) * tE;
-						vertices[v2]->y = vertex2->y + (vertex0->y - vertex2->y) * tE;
-						vertices[v2]->z = vertex2->z + (vertex0->z - vertex2->z) * tE;
+						line1.v0.x = vertex2.x + (vertex0.x - vertex2.x) * tE;
+						line1.v0.y = vertex2.y + (vertex0.y - vertex2.y) * tE;
+						line1.v0.z = vertex2.z + (vertex0.z - vertex2.z) * tE;
 					}
 				}
-			}
-		}
-
-		// DO PERSPECTIVE DIVIDE
-		if(camera->projectionType == PERSPECTIVE_PROJECTION){
-			for(j = 0; j < vertices.size(); j++){
-				vertices[j]->x /= w_values[j];
-				vertices[j]->y /= w_values[j];
-				vertices[j]->z /= w_values[j];
 			}
 		}
 
