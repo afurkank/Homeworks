@@ -149,20 +149,23 @@ Matrix4 get_viewport_matrix(Camera *camera){
 }
 
 bool isLineVisible(double denominator, double numerator, double &tEntry, double &tLeave){
-    if(denominator == 0) return numerator <= 0;
+	//cout << "isLineVisible is called" << endl;
     double t = numerator / denominator;
     if(denominator > 0) {
         if(t > tLeave) return false;
         tEntry = std::max(t, tEntry);
-    } else {
+    }
+	else if(denominator < 0){
         if(t < tEntry) return false;
         tLeave = std::min(t, tLeave);
     }
+	else if(numerator > 0) return false;
+	//cout << "returning true from isLineVisible()" << endl;
     return true;
 }
 
 // Liang-Barsky line clipping algorithm
-bool clipLine(Line &line, Camera *camera) {
+bool clipLine(Line &line) {
     Vec4 &start = line.v0, &end = line.v1;
     Color &colStart = line.c0, &colEnd = line.c1;
     double dx = end.x - start.x, dy = end.y - start.y, dz = end.z - start.z;
@@ -173,7 +176,7 @@ bool clipLine(Line &line, Camera *camera) {
     if(isLineVisible(dx, x_min - start.x, tEntry, tLeave) && isLineVisible(-dx, start.x - x_max, tEntry, tLeave) &&
        isLineVisible(dy, y_min - start.y, tEntry, tLeave) && isLineVisible(-dy, start.y - y_max, tEntry, tLeave) &&
        isLineVisible(dz, z_min - start.z, tEntry, tLeave) && isLineVisible(-dz, start.z - z_max, tEntry, tLeave)) {
-
+		
         if(tLeave < 1) {
             end.x = start.x + dx * tLeave;
             end.y = start.y + dy * tLeave;
@@ -205,6 +208,8 @@ void rasterizeLineHelper(Line &line, vector<vector<Color>> &image, int x, int y,
 	Color color = Color(r, g, b);
 
 	// image[x][y] = color
+	x = (x < 0) ? 0 : x;
+	y = (y < 0) ? 0 : y;
 	image[x][y] = color;
 }
 
@@ -332,98 +337,36 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 			vertex0 = multiplyMatrixWithVec4(M_composite, vertex0);
 			vertex1 = multiplyMatrixWithVec4(M_composite, vertex1);
 			vertex2 = multiplyMatrixWithVec4(M_composite, vertex2);
-			//cout << "projected vertex0" << endl << vertex0 << endl;
-			//cout << "projected vertex1" << endl << vertex1 << endl;
-			//cout << "projected vertex2" << endl << vertex2 << endl;
 			Color c0, c1, c2;
 			c0 = *(this->colorsOfVertices[vertex0.colorId - 1]);
 			c1 = *(this->colorsOfVertices[vertex1.colorId - 1]);
 			c2 = *(this->colorsOfVertices[vertex2.colorId - 1]);
-
 			if(mesh->type == WIREFRAME_MESH){
 				// Clip the lines of the triangle in wireframe mode
 				Line line1 = Line(vertex0, vertex1, c0, c1);
 				Line line2 = Line(vertex1, vertex2, c1, c2);
 				Line line3 = Line(vertex2, vertex0, c2, c0);
-				bool visible1 = clipLine(line1, camera);
-				bool visible2 = clipLine(line2, camera);
-				bool visible3 = clipLine(line3, camera);
 				// if the projection type is perspective, apply perspective divide
 				if(camera->projectionType){
 					perform_pers_divide(line1);
 					perform_pers_divide(line2);
 					perform_pers_divide(line3);
 				}
-				if(visible1 || visible2 || visible3){
-					cout << "one of the lines was clipped" << endl;
-				}
+				bool visible1 = clipLine(line1);
+				bool visible2 = clipLine(line2);
+				bool visible3 = clipLine(line3);
 				// after perspective divide, apply viewport transformation
 				Matrix4 M_vp = get_viewport_matrix(camera);
 				perform_viewport_transformation(M_vp, line1);
 				perform_viewport_transformation(M_vp, line2);
 				perform_viewport_transformation(M_vp, line3);
-				cout << line1.v0 << endl;
-				//cout << line1.v1 << endl;
-				//cout << "**********************************" << endl;
 				// perform line rasterization and color interpolation
 				// use the midpoint algorithm for line rasterization
 				if(visible1) rasterizeLine(line1, this->image);
 				if(visible2) rasterizeLine(line2, this->image);
 				if(visible3) rasterizeLine(line3, this->image);
-				//rasterizeLine(line1, this->image);
-				//rasterizeLine(line2, this->image);
-				//rasterizeLine(line3, this->image);
 			}
 		}
-
-		/* // Implement backface culling
-		if(this->cullingEnabled){
-			for (j = 0; j < faces.size(); j++) {
-				int v0 = faces[j].vertexIds[0] - 1;
-				int v1 = faces[j].vertexIds[1] - 1;
-				int v2 = faces[j].vertexIds[2] - 1;
-
-				Vec3* vertex0 = vertices[v0];
-				Vec3* vertex1 = vertices[v1];
-				Vec3* vertex2 = vertices[v2];
-
-				Vec3 normal = subtractVec3(*vertex1, *vertex0);
-				normal = crossProductVec3(normal, subtractVec3(*vertex2, *vertex0));
-				normal = normalizeVec3(normal);
-
-				Vec3 cameraToFace = subtractVec3(*vertex0, camera->position);
-
-				double dotProduct = dotProductVec3(normal, cameraToFace);
-				if (dotProduct < 0) {
-					// Remove the face from the list of faces
-					faces.erase(faces.begin() + j);
-
-					j--;
-				}
-			}
-		} */
-		// Else, perform triangle rasterization
-		// use barycentric coordinates for color interpolation
-
-		/* // Initialize the depth buffer
-		vector<vector<double>> depthBuffer;
-		for (int j = 0; j < camera->horRes; j++) {
-			vector<double> row;
-			for (int k = 0; k < camera->verRes; k++) {
-				row.push_back(1.01);
-			}
-			depthBuffer.push_back(row);
-		}
-
-		// Initialize the frame buffer
-		vector<vector<Color>> frameBuffer;
-		for (int j = 0; j < camera->horRes; j++) {
-			vector<Color> row;
-			for (int k = 0; k < camera->verRes; k++) {
-				row.push_back(this->backgroundColor);
-			}
-			frameBuffer.push_back(row);
-		} */
 	}
 }
 
@@ -752,3 +695,51 @@ void Scene::convertPPMToPNG(string ppmFileName)
 	command = "convert " + ppmFileName + " " + ppmFileName + ".png";
 	system(command.c_str());
 }
+/* // Implement backface culling
+		if(this->cullingEnabled){
+			for (j = 0; j < faces.size(); j++) {
+				int v0 = faces[j].vertexIds[0] - 1;
+				int v1 = faces[j].vertexIds[1] - 1;
+				int v2 = faces[j].vertexIds[2] - 1;
+
+				Vec3* vertex0 = vertices[v0];
+				Vec3* vertex1 = vertices[v1];
+				Vec3* vertex2 = vertices[v2];
+
+				Vec3 normal = subtractVec3(*vertex1, *vertex0);
+				normal = crossProductVec3(normal, subtractVec3(*vertex2, *vertex0));
+				normal = normalizeVec3(normal);
+
+				Vec3 cameraToFace = subtractVec3(*vertex0, camera->position);
+
+				double dotProduct = dotProductVec3(normal, cameraToFace);
+				if (dotProduct < 0) {
+					// Remove the face from the list of faces
+					faces.erase(faces.begin() + j);
+
+					j--;
+				}
+			}
+		} */
+		// Else, perform triangle rasterization
+		// use barycentric coordinates for color interpolation
+
+		/* // Initialize the depth buffer
+		vector<vector<double>> depthBuffer;
+		for (int j = 0; j < camera->horRes; j++) {
+			vector<double> row;
+			for (int k = 0; k < camera->verRes; k++) {
+				row.push_back(1.01);
+			}
+			depthBuffer.push_back(row);
+		}
+
+		// Initialize the frame buffer
+		vector<vector<Color>> frameBuffer;
+		for (int j = 0; j < camera->horRes; j++) {
+			vector<Color> row;
+			for (int k = 0; k < camera->verRes; k++) {
+				row.push_back(this->backgroundColor);
+			}
+			frameBuffer.push_back(row);
+		} */
