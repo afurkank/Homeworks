@@ -215,7 +215,7 @@ Color multiplyColor(Color c, double s){
 * Round the given Color c and return the rounded color.
 */
 Color roundColor(Color c){
-    double r, g, b;
+    int r, g, b;
     r = (int)(c.r + 0.5);
     g = (int)(c.g + 0.5);
     b = (int)(c.b + 0.5);
