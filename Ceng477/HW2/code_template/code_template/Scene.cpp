@@ -18,6 +18,20 @@
 using namespace tinyxml2;
 using namespace std;
 
+/*
+	If given value is less than 0, converts value to 0.
+	If given value is more than 255, converts value to 255.
+	Otherwise returns value itself.
+*/
+int convertToZeroAnd255(double value)
+{
+	if (value >= 255.0)
+		return 255;
+	if (value <= 0.0)
+		return 0;
+	return (int)(value);
+}
+
 Matrix4 get_translation_matrix(Translation *translation){
 	double tx = translation->tx;
 	double ty = translation->ty;
@@ -172,14 +186,39 @@ Matrix4 get_perspective_proj_matrix(Camera *camera){
 	else{
 		M_per = M_orth;
 	}
+	return M_per;
+}
+
+Matrix4 get_viewport_matrix(Camera *camera){
+	// CALCULATE VIEWPORT TRANSFORMATION MATRIX
+	int n_x = camera->horRes, n_y = camera->verRes;
+	double M_vp[4][4] = {
+		{n_x / 2.0, 	    0,   0, (n_x - 1) / 2.0},
+		{	     0, n_y / 2.0,   0, (n_y - 1) / 2.0},
+		{	     0, 		0, 1/2, 		    1/2},
+		{	     0, 		0,   0, 		      1}
+	};
+	return M_vp;
+}
+
+bool visible(double den, double num, double &tE, double &tL){
+	double t = num / den;
+	if(den > 0){
+		if(t > tL) return false;
+		if(t > tE) tE = t;
+	}
+	else if(den < 0){
+		if(t < tE) return false;
+		if(t < tL) tL = t;
+	}
+	else if(num > 0) return false;
+	return true;
 }
 
 // Liang-Barsky line clipping algorithm
-bool clipLine(Line &line, double &tE, double &tL, Camera *camera) {
-	Vec4 v0, v1;
-	v0 = line.v0; v1 = line.v1;
-	Color c0, c1;
-	c0 = line.c0; c1 = line.c1;
+bool clipLine(Line &line, Camera *camera) {
+	Vec4 v0 = line.v0, v1 = line.v1;
+	Color c0 = line.c0, c1 = line.c1;
     double dx = v1.x - v0.x;
     double dy = v1.y - v0.y;
     double dz = v1.z - v0.z;
@@ -187,54 +226,144 @@ bool clipLine(Line &line, double &tE, double &tL, Camera *camera) {
 
     double x_min = -1, x_max = 1, y_min = -1, y_max = 1, z_min = -1, z_max = 1;
 	/*double x_min = 0.0, x_max = camera->horRes, y_min = 0.0, y_max = camera->verRes, z_min = camera->near, z_max = camera->far;*/
-    double denominators[6] = {dx, -dx, dy, -dy, dz, -dz};
+	
+	double denominators[6] = {dx, -dx, dy, -dy, dz, -dz};
     double numerators[6] = {x_min - v0.x, v0.x - x_max, y_min - v0.y, v0.y - y_max, z_min - v0.z, v0.z - z_max};
 
+	double den, num, t;
+	double tE = 0, tL = 1;
+	bool visib = true;
     for (int i = 0; i < 6; i++) {
-		double den, num, t;
 		den = denominators[i]; num = numerators[i];
-		t = num / den;
-
-		if(den > 0){
-			if(t > tL) return false;
-			else if(t > tE) tE = t;
+		if(visible(den, num, tE, tL)) continue;
+		else{
+			visib = false; break;
 		}
-		else if(den < 0){
-			if(t < tE) return false;
-			else if(t < tL) tL = t;
+	}
+	if(visib){
+		if(tL < 1){
+			line.v1.x = v0.x + (dx * tL);
+			line.v1.y = v0.y + (dy * tL);
+			line.v1.z = v0.z + (dz * tL);
+			c1 = addColor(c0, multiplyColor(dc, tL));
 		}
-		else if(num > 0) return false;
+		if(tE > 0){
+			line.v0.x = v0.x + (dx * tE);
+			line.v0.y = v0.y + (dy * tE);
+			line.v0.z = v0.z + (dz * tE);
+			c0 = addColor(c0, multiplyColor(dc, tE));
+		}
+	}
+    return visib;
+}
 
-	}
+void rasterizeLineHelper(Line &line, vector<vector<Color>> &image, int x, int y, Color c) {
+	// round(c)
+	int r, g, b;
+	Color roundedColor = roundColor(c);
+	r = roundedColor.r; g = roundedColor.g; b = roundedColor.b;
 
-	if(tL < 1){
-		line.v1.x = v0.x + (dx * tL);
-		line.v1.y = v0.y + (dy * tL);
-		line.v1.z = v0.z + (dz * tL);
-		c1 = addColor(c0, multiplyColor(dc, tL));
+	// make color values between 0 and 255
+	r = convertToZeroAnd255(r);
+	g = convertToZeroAnd255(g);
+	b = convertToZeroAnd255(b);
+
+	Color color = Color(r, g, b);
+
+	// image[x][y] = color
+	image[x][y] = color;
+}
+
+void rasterizeLine(Line &line, vector<vector<Color>> &image) {
+	Vec4 v0 = line.v0, v1 = line.v1;
+	Color c0 = line.c0, c1 = line.c1;
+	Color c, dc;
+	int x, y;
+	double x0, x1, y0, y1;
+	int d;
+
+	double dx = v1.x - v0.x;
+	double dy = v1.y - v0.y;
+
+	// calculate the slope of the line
+	double slope = (v1.y - v0.y) / (v1.x - v0.x);
+
+	// check if the slope is between 0 and 1
+	if (abs(dy) <= abs(dx)) {
+		// rasterize the line from v0 to v1
+		x0 = (v0.x < v1.x) ? v0.x : v1.x;
+		x1 = (v0.x > v1.x) ? v1.x : v0.x;
+		y0 = (v0.y < v1.y) ? v0.y : v1.y;
+		y1 = (v0.y > v1.y) ? v1.y : v0.y;
+
+		x = (int)x0; y = (int)y0;
+
+		d = 2 * (y0 - y1) + (x1 - x0);
+
+		c = c0;
+
+		dc = divideColor(subtractColor(c1, c0), (x1 - x0));
+		while (x < x1) {
+			rasterizeLineHelper(line, image, x, y, c);
+
+			if (d < 0) {
+				y = y + 1;
+				d += 2 * ((y0 - y1) + (x1 - x0));
+			}
+			else {
+				d += 2 * (y0 - y1);
+			}
+
+			c = addColor(c, dc);
+			x += 1;
+		}
 	}
-	if(tE > 0){
-		line.v0.x = v0.x + (dx * tE);
-		line.v0.y = v0.y + (dy * tE);
-		line.v0.z = v0.z + (dz * tE);
-		c0 = addColor(c0, multiplyColor(dc, tE));
+	else {
+		// swap the roles of x and y
+		x0 = (v0.y < v1.y) ? v0.y : v1.y;
+		x1 = (v0.y > v1.y) ? v1.y : v0.y;
+		y0 = (v0.x < v1.x) ? v0.x : v1.x;
+		y1 = (v0.x > v1.x) ? v1.x : v0.x;
+
+		x = (int)x0; y = (int)y0;
+
+		d = 2 * (y0 - y1) + (x1 - x0);
+
+		c = c0;
+
+		dc = divideColor(subtractColor(c1, c0), (x1 - x0));
+		while (x < x1) {
+			rasterizeLineHelper(line, image, y, x, c);
+
+			if (d < 0) {
+				y = y + 1;
+				d += 2 * ((y0 - y1) + (x1 - x0));
+			}
+			else {
+				d += 2 * (y0 - y1);
+			}
+
+			c = addColor(c, dc);
+			x += 1;
+		}
 	}
+}
+
+void perform_pers_divide(Line &line){	
+	line.v0.x /= line.v0.t;
+	line.v0.y /= line.v0.t;
+	line.v0.z /= line.v0.t;
 	
-    return true;
+	line.v1.x /= line.v1.t;
+	line.v1.y /= line.v1.t;
+	line.v1.z /= line.v1.t;
 }
 
-/*return true;
-
-if (denominators[i] == 0 && numerators[i] < 0) return false;
-double t = numerators[i] / denominators[i];
-if (denominators[i] < 0) {
-	if (t > tL) return false;
-	else if (t > tE) tE = t;
+void perform_viewport_transformation(Matrix4 M_vp, Line &line){
+	line.v0 = multiplyMatrixWithVec4(M_vp, line.v0);
+	line.v1 = multiplyMatrixWithVec4(M_vp, line.v1);
 }
-else {
-	if (t < tE) return false;
-	else if (t < tL) tL = t;
-}*/
+
 /*
 	Transformations, clipping, culling, rasterization are done here.
 */
@@ -254,44 +383,38 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 	n_y = camera->verRes;
 	
 	for(int i = 0; i < meshes.size(); i++){
+		int j = 0;
 		Mesh *mesh = meshes[i];
 		vector<Matrix4> transformations;
-		vector<Vec3> transformed_vertices;
-
-		int j = 0;
-		
 		// CALCULATE COMPOSITE MODELING TRANSFORMATION MATRIX
 		Matrix4 M_model_matrix = getIdentityMatrix();
+		cout << M_model_matrix << endl;
 		for(; j < mesh->numberOfTransformations; j++){
 			int transformationId = mesh->transformationIds[j] - 1;
-
 			if(mesh->transformationTypes[j] == 't'){
 				// TRANSLATION
-				Translation *translation = translations[transformationId];
-				Matrix4 translation_matrix = get_translation_matrix(translation);
+				Matrix4 translation_matrix = get_translation_matrix(translations[transformationId]);
 				M_model_matrix = multiplyMatrixWithMatrix(translation_matrix, M_model_matrix);
 			}
 			else if(mesh->transformationTypes[j] == 's'){
 				// SCALING
-				Scaling *scaling = scalings[transformationId];
-				Matrix4 scaling_matrix = get_scaling_matrix(scaling);
+				Matrix4 scaling_matrix = get_scaling_matrix(scalings[transformationId]);
 				M_model_matrix = multiplyMatrixWithMatrix(scaling_matrix, M_model_matrix);
 			}
 			else{
-				Rotation *rotation = rotations[transformationId];
-				Matrix4 rotation_matrix = get_rotation_matrix(rotation);
+				Matrix4 rotation_matrix = get_rotation_matrix(rotations[transformationId]);
 				M_model_matrix = multiplyMatrixWithMatrix(rotation_matrix, M_model_matrix);
 			}
 		}
-		cout << "b" << endl;
+		cout << M_model_matrix << endl;
 		// APPLY VIWEING TRANSFORMATIONS
 		Matrix4 M_cam_translation = get_cam_translation_matrix(camera);
 		// PERFORM PERSPECTIVE OR ORTHOGRAPHIC PROJECTION
 		Matrix4 M_proj_matrix = get_perspective_proj_matrix(camera);
 		// CALCULATE THE COMPOSITE MATRIX
 		Matrix4 M_composite = multiplyMatrixWithMatrix(M_proj_matrix, multiplyMatrixWithMatrix(M_cam_translation, M_model_matrix));
-		// PERFORM CLIPPING AND CULLING OPERATIONS
-		for (int j = 0; j < mesh->numberOfTriangles; j++) {
+		//cout << M_composite << endl;
+		for (j = 0; j < mesh->numberOfTriangles; j++) {
 			Triangle triangle = mesh->triangles[j];
 			Vec3 *v0, *v1, *v2;
 			v0 = this->vertices[triangle.vertexIds[0]-1];
@@ -308,90 +431,44 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 			vertex0 = multiplyMatrixWithVec4(M_composite, vertex0);
 			vertex1 = multiplyMatrixWithVec4(M_composite, vertex1);
 			vertex2 = multiplyMatrixWithVec4(M_composite, vertex2);
+			Color c0, c1, c2;
+			c0 = *(this->colorsOfVertices[vertex0.colorId - 1]);
+			c1 = *(this->colorsOfVertices[vertex1.colorId - 1]);
+			c2 = *(this->colorsOfVertices[vertex2.colorId - 1]);
 
 			if(mesh->type == WIREFRAME_MESH){
-				// Clip the lines of the triangle
-				double tE = 0, tL = 1;
-				Color *c0, *c1, *c2;
-				c0 = this->colorsOfVertices[vertex0.colorId - 1];
-				c1 = this->colorsOfVertices[vertex1.colorId - 1];
-				c2 = this->colorsOfVertices[vertex2.colorId - 1];
-				Line line1 = Line(vertex0, vertex1, *c0, *c1);
-				Line line2 = Line(vertex1, vertex2, *c1, *c2);
-				Line line3 = Line(vertex2, vertex0, *c2, *c0);
-				bool visible = clipLine(line1, tE, tL, camera);
-				if (visible) {
-					if (tL < 1) {
-						line1.v1.x = vertex0.x + (vertex1.x - vertex0.x) * tL;
-						line1.v1.y = vertex0.y + (vertex1.y - vertex0.y) * tL;
-						line1.v1.z = vertex0.z + (vertex1.z - vertex0.z) * tL;
-					}
-					if (tE > 0) {
-						line1.v0.x = vertex0.x + (vertex1.x - vertex0.x) * tE;
-						line1.v0.y = vertex0.y + (vertex1.y - vertex0.y) * tE;
-						line1.v0.z = vertex0.z + (vertex1.z - vertex0.z) * tE;
-					}
+				// Clip the lines of the triangle in wireframe mode
+				Line line1 = Line(vertex0, vertex1, c0, c1);
+				Line line2 = Line(vertex1, vertex2, c1, c2);
+				Line line3 = Line(vertex2, vertex0, c2, c0);
+				bool visible1 = clipLine(line1, camera);
+				bool visible2 = clipLine(line2, camera);
+				bool visible3 = clipLine(line3, camera);
+				// if the projection type is perspective, apply perspective divide
+				if(camera->projectionType){
+					perform_pers_divide(line1);
+					perform_pers_divide(line2);
+					perform_pers_divide(line3);
 				}
-
-				visible = clipLine(line2, tE, tL, camera);
-				if (visible) {
-					if (tL < 1) {
-						line1.v1.x = vertex1.x + (vertex2.x - vertex1.x) * tL;
-						line1.v1.y = vertex1.y + (vertex2.y - vertex1.y) * tL;
-						line1.v1.z = vertex1.z + (vertex2.z - vertex1.z) * tL;
-					}
-					if (tE > 0) {
-						line1.v0.x = vertex1.x + (vertex2.x - vertex1.x) * tE;
-						line1.v0.y = vertex1.y + (vertex2.y - vertex1.y) * tE;
-						line1.v0.z = vertex1.z + (vertex2.z - vertex1.z) * tE;
-					}
+				if(visible1 || visible2 || visible3){
+					cout << "one of the lines was clipped" << endl;
 				}
-
-				visible = clipLine(line3, tE, tL, camera);
-				if (visible) {
-					if (tL < 1) {
-						line1.v1.x = vertex2.x + (vertex0.x - vertex2.x) * tL;
-						line1.v1.y = vertex2.y + (vertex0.y - vertex2.y) * tL;
-						line1.v1.z = vertex2.z + (vertex0.z - vertex2.z) * tL;
-					}
-					if (tE > 0) {
-						line1.v0.x = vertex2.x + (vertex0.x - vertex2.x) * tE;
-						line1.v0.y = vertex2.y + (vertex0.y - vertex2.y) * tE;
-						line1.v0.z = vertex2.z + (vertex0.z - vertex2.z) * tE;
-					}
-				}
+				// after perspective divide, apply viewport transformation
+				Matrix4 M_vp = get_viewport_matrix(camera);
+				perform_viewport_transformation(M_vp, line1);
+				perform_viewport_transformation(M_vp, line2);
+				perform_viewport_transformation(M_vp, line3);
+				// perform line rasterization and color interpolation
+				// use the midpoint algorithm for line rasterization
+				if(visible1) rasterizeLine(line1, this->image);
+				if(visible2) rasterizeLine(line2, this->image);
+				if(visible3) rasterizeLine(line3, this->image);
 			}
 		}
 
-		// CALCULATE VIEWPORT TRANSFORMATION MATRIX
-		double M_vp_values[4][4] = {
-			{n_x / 2.0, 	    0,   0, (n_x - 1) / 2.0},
-			{	     0, n_y / 2.0,   0, (n_y - 1) / 2.0},
-			{	     0, 		0, 1/2, 		    1/2},
-			{	     0, 		0,   0, 		      1}
-		};
-
-		Matrix4 M_vp = M_vp_values;
-
-		// APPLY THE VIEWPORT TRANSFORMATION TO ALL THE VERTICES
-
-		for(j = 0; j < vertices.size(); j++){
-			double x = vertices[j]->x;
-			double y = vertices[j]->y;
-			double z = vertices[j]->z;
-
-			Vec4 point = Vec4(x, y, z, 1);
-
-			Vec4 new_vertex = multiplyMatrixWithVec4(M_vp, point);
-
-			vertices[j]->x = new_vertex.x;
-			vertices[j]->y = new_vertex.y;
-			vertices[j]->z = new_vertex.z;
-		}
-
-		// Implement backface culling
+		/* // Implement backface culling
 		if(this->cullingEnabled){
-			for (int j = 0; j < faces.size(); j++) {
+			for (j = 0; j < faces.size(); j++) {
 				int v0 = faces[j].vertexIds[0] - 1;
 				int v1 = faces[j].vertexIds[1] - 1;
 				int v2 = faces[j].vertexIds[2] - 1;
@@ -414,74 +491,9 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 					j--;
 				}
 			}
-		}
-		// PERFORM RASTERIZATION
-
-		// If mesh is of type wireframe, perform line rasterization and color interpolation
-		// use the midpoint algorithm for line rasterization
-
-		if(mesh->type == WIREFRAME_MESH){
-			for (int j = 0; j < faces.size(); j++){
-				Vec3* vertex0 = vertices[faces[j].vertexIds[0]] - 1;
-				Vec3* vertex1 = vertices[faces[j].vertexIds[1]] - 1;
-				Vec3* vertex2 = vertices[faces[j].vertexIds[2]] - 1;
-
-				Color c, c0, c1, dc;
-				double x, y;
-				double x0, x1, y0, y1;
-				double d;
-
-				// Rasterize the line from vertex0 to vertex1
-				x0 = (vertex0->x < vertex1->x) ? vertex0->x : vertex1->x;
-				x1 = (vertex0->x > vertex1->x) ? vertex1->x : vertex0->x;
-				y0 = (vertex0->y < vertex1->y) ? vertex0->y : vertex1->y;
-				y1 = (vertex0->y > vertex1->y) ? vertex1->y : vertex0->y;
-
-				x = x0; y = y0;
-
-				d = 2 * (y0 - y1) + (x1 - x0);
-
-				c0 = *(this->colorsOfVertices[vertex0->colorId]);
-				c1 = *(this->colorsOfVertices[vertex0->colorId]);
-
-				c = c0;
-
-				dc = divideColor(subtractColor(c1, c0), (x1 - x0));
-				while(x < x1){
-				
-					// round(c)
-					int r, g, b;
-					Color roundedColor = roundColor(c);
-					r = roundedColor.r; g = roundedColor.g; b = roundedColor.b;
-
-					// make color values between 0 and 255
-					r = makeBetweenZeroAnd255(r);
-					g = makeBetweenZeroAnd255(g);
-					b = makeBetweenZeroAnd255(b);
-
-					Color color = Color(r, g, b);
-
-					// image[x][y] = color
-					assignColorToPixel(int(x), int(y), color);
-
-					if(d < 0){
-						y = y+1;
-						d += 2 * ((y0 - y1) + (x1 - x0));
-					}
-					else{
-						d += 2 * (y0 - y1);
-					}
-
-					c = addColor(c, dc);
-				}
-			}
-		}
-
+		} */
 		// Else, perform triangle rasterization
 		// use barycentric coordinates for color interpolation
-		else{
-
-		}
 
 		/* // Initialize the depth buffer
 		vector<vector<double>> depthBuffer;
@@ -783,11 +795,6 @@ void Scene::initializeImage(Camera *camera)
 	}
 }
 
-/*
-	If given value is less than 0, converts value to 0.
-	If given value is more than 255, converts value to 255.
-	Otherwise returns value itself.
-*/
 int Scene::makeBetweenZeroAnd255(double value)
 {
 	if (value >= 255.0)

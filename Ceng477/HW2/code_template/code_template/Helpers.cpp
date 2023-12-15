@@ -216,8 +216,8 @@ Color multiplyColor(Color c, double s){
 */
 Color roundColor(Color c){
     double r, g, b;
-    r = round(c.r);
-    g = round(c.g);
-    b = round(c.b);
+    r = (int)(c.r + 0.5);
+    g = (int)(c.g + 0.5);
+    b = (int)(c.b + 0.5);
     return Color(r, g, b);
 }
