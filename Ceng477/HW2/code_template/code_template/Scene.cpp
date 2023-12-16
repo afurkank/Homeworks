@@ -12,17 +12,11 @@
 #include "Helpers.h"
 #include "Scene.h"
 #include "Line.h"
-
 #include <iostream>
 
 using namespace tinyxml2;
 using namespace std;
 
-/*
-	If given value is less than 0, converts value to 0.
-	If given value is more than 255, converts value to 255.
-	Otherwise returns value itself.
-*/
 int convertToZeroAnd255(double value)
 {
 	if (value >= 255.0)
@@ -147,8 +141,21 @@ Matrix4 get_viewport_matrix(Camera *camera){
 	return M_vp;
 }
 
+Matrix4 get_viewport_matrix_with_depth(Camera *camera) {
+    int n_x = camera->horRes, n_y = camera->verRes;
+    double depthMin = 0; // min depth
+    double depthMax = 1; // max depth
+
+    double M_vp[4][4] = {
+        {n_x / 2.0,         0,          				 0, 			(n_x - 1) / 2.0},
+        {        0, n_y / 2.0,          				 0, 			(n_y - 1) / 2.0},
+        {        0,         0, (depthMax - depthMin) / 2.0, (depthMax + depthMin) / 2.0},
+        {        0,         0,          				 0,               			  1}
+    };
+    return M_vp;
+}
+
 bool isLineVisible(double denominator, double numerator, double &tEntry, double &tLeave){
-	//cout << "isLineVisible is called" << endl;
     double t = numerator / denominator;
     if(denominator > 0) {
         if(t > tLeave) return false;
@@ -257,27 +264,20 @@ void rasterizeLine(Line &line, vector<vector<Color>> &image) {
     }
 }
 
-// Edge function
 double edgeFunction(const Vec4 &a, const Vec4 &b, const Vec4 &c) {
     return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
 }
 
-// Color interpolation
-Color interpolateColor(double alpha, double beta, double gamma, const Color &c0, const Color &c1, const Color &c2) {
+Color interpolateColor(double alpha, double beta, double gamma, 
+Color c0, Color c1, Color c2) {
     double r = alpha * c0.r + beta * c1.r + gamma * c2.r;
     double g = alpha * c0.g + beta * c1.g + gamma * c2.g;
     double b = alpha * c0.b + beta * c1.b + gamma * c2.b;
     return Color(round(r), round(g), round(b));
 }
 
-// Draw a single pixel in the image
-void rasterizePoint(vector<vector<Color>> &image, int x, int y, const Color &color) {
-    if (x >= 0 && x < image.size() && y >= 0 && y < image[0].size()) {
-        image[x][y] = color;
-    }
-}
-
-void rasterizeTriangle(Vec4 v0, Vec4 v1, Vec4 v2, Color c0, Color c1, Color c2, vector<vector<Color>> &image, Camera *camera) {
+void rasterizeTriangle(Vec4 v0, Vec4 v1, Vec4 v2, Color c0, Color c1, Color c2, 
+vector<vector<Color>> &image, vector<vector<double>> &depthBuffer, Camera *camera) {
     // find bounding box
     int minX = min({v0.x, v1.x, v2.x});
 	minX = (minX < 0) ? 0 : minX;
@@ -292,29 +292,35 @@ void rasterizeTriangle(Vec4 v0, Vec4 v1, Vec4 v2, Color c0, Color c1, Color c2, 
 	maxY = (maxY < 0) ? 0 : maxY;
 	maxY = (maxY > camera->verRes - 1) ? camera->verRes-1 : maxY;
 
-    // Precompute edge function denominators
+    // edge function denominators
     double f12_v0 = edgeFunction(v1, v2, v0);
     double f20_v1 = edgeFunction(v2, v0, v1);
     double f01_v2 = edgeFunction(v0, v1, v2);
 
-    // Iterate over the bounding box
     for (int x = minX; x <= maxX; x++) {
         for (int y = minY; y <= maxY; y++) {
             Vec4 p = Vec4(x, y, 0, 0);
 
-            // Calculate barycentric coordinates using edge functions
+            // calculate barycentric coordinates
             double alpha = edgeFunction(v1, v2, p) / f12_v0;
             double beta  = edgeFunction(v2, v0, p) / f20_v1;
             double gamma = edgeFunction(v0, v1, p) / f01_v2;
 
-            // Check if point is inside the triangle
+            // check if inside
             if (alpha >= 0 && beta >= 0 && gamma >= 0) {
-                // Interpolate color
-                Color c = interpolateColor(alpha, beta, gamma, c0, c1, c2);
+				// interpolate depth
+				double depth = alpha * v0.z + beta * v1.z + gamma * v2.z;
+				// check if there is anything closer than the current object
+				if(depth < depthBuffer[x][y]){
+					// interpolate color
+					Color c = interpolateColor(alpha, beta, gamma, c0, c1, c2);
 
-                // Draw the pixel
-                //rasterizePoint(image, x, y, c);
-				rasterizeHelper(image, x, y, c);
+					// draw the color
+					rasterizeHelper(image, x, y, c);
+
+					// update depth buffer
+					depthBuffer[x][y] = depth;
+				}
             }
         }
     }
@@ -381,6 +387,7 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 				M_model_matrix = multiplyMatrixWithMatrix(scaling_matrix, M_model_matrix);
 			}
 			else{
+				// ROTATION
 				Matrix4 rotation_matrix = get_rotation_matrix(rotations[transformationId]);
 				M_model_matrix = multiplyMatrixWithMatrix(rotation_matrix, M_model_matrix);
 			}
@@ -391,7 +398,6 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 		Matrix4 M_proj_matrix = get_perspective_proj_matrix(camera);
 		// CALCULATE THE COMPOSITE MATRIX
 		Matrix4 M_composite = multiplyMatrixWithMatrix(M_proj_matrix, multiplyMatrixWithMatrix(M_cam_translation, M_model_matrix));
-		
 		for (j = 0; j < mesh->numberOfTriangles; j++) {
 			Triangle triangle = mesh->triangles[j];
 			Vec3 *v0, *v1, *v2;
@@ -430,8 +436,26 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 			c0 = *(this->colorsOfVertices[vertex0.colorId - 1]);
 			c1 = *(this->colorsOfVertices[vertex1.colorId - 1]);
 			c2 = *(this->colorsOfVertices[vertex2.colorId - 1]);
-			if(mesh->type == WIREFRAME_MESH){
-				// Clip the lines of the triangle in wireframe mode
+			if(!(mesh->type == WIREFRAME_MESH)){
+				// solid mode, rasterize the triangle
+				// no clipping here
+
+				// if the projection type is perspective, apply perspective divide
+				if(camera->projectionType){
+					perform_pers_divide_on_v(vertex0);
+					perform_pers_divide_on_v(vertex1);
+					perform_pers_divide_on_v(vertex2);
+				}
+				// apply viewport matrix
+				Matrix4 M_vp = get_viewport_matrix_with_depth(camera);
+				perform_viewport_transformation_on_v(M_vp, vertex0);
+				perform_viewport_transformation_on_v(M_vp, vertex1);
+				perform_viewport_transformation_on_v(M_vp, vertex2);
+				// rasterize the triangle
+				rasterizeTriangle(vertex0, vertex1, vertex2, c0, c1, c2, this->image, this->depth, camera);
+			}
+			else{
+				// clip the lines of the triangle in wireframe mode
 				Line line1 = Line(vertex0, vertex1, c0, c1);
 				Line line2 = Line(vertex1, vertex2, c1, c2);
 				Line line3 = Line(vertex2, vertex0, c2, c0);
@@ -445,7 +469,7 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 				bool visible2 = clipLine(line2);
 				bool visible3 = clipLine(line3);
 				// after perspective divide, apply viewport transformation
-				Matrix4 M_vp = get_viewport_matrix(camera);
+				Matrix4 M_vp = get_viewport_matrix_with_depth(camera);
 				perform_viewport_transformation_on_line(M_vp, line1);
 				perform_viewport_transformation_on_line(M_vp, line2);
 				perform_viewport_transformation_on_line(M_vp, line3);
@@ -454,26 +478,6 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 				if(visible1) rasterizeLine(line1, this->image);
 				if(visible2) rasterizeLine(line2, this->image);
 				if(visible3) rasterizeLine(line3, this->image);
-			}
-			else{
-				// solid mode, rasterize the triangle
-				// no clipping here
-
-				// if the projection type is perspective, apply perspective divide
-				if(camera->projectionType){
-					perform_pers_divide_on_v(vertex0);
-					perform_pers_divide_on_v(vertex1);
-					perform_pers_divide_on_v(vertex2);
-				}
-
-				// apply viewport matrix
-				Matrix4 M_vp = get_viewport_matrix(camera);
-				perform_viewport_transformation_on_v(M_vp, vertex0);
-				perform_viewport_transformation_on_v(M_vp, vertex1);
-				perform_viewport_transformation_on_v(M_vp, vertex2);
-
-				// rasterize the triangle
-				rasterizeTriangle(vertex0, vertex1, vertex2, c0, c1, c2, this->image, camera);
 			}
 		}
 	}
@@ -804,22 +808,3 @@ void Scene::convertPPMToPNG(string ppmFileName)
 	command = "convert " + ppmFileName + " " + ppmFileName + ".png";
 	system(command.c_str());
 }
-/* // Initialize the depth buffer
-vector<vector<double>> depthBuffer;
-for (int j = 0; j < camera->horRes; j++) {
-	vector<double> row;
-	for (int k = 0; k < camera->verRes; k++) {
-		row.push_back(1.01);
-	}
-	depthBuffer.push_back(row);
-}
-
-// Initialize the frame buffer
-vector<vector<Color>> frameBuffer;
-for (int j = 0; j < camera->horRes; j++) {
-	vector<Color> row;
-	for (int k = 0; k < camera->verRes; k++) {
-		row.push_back(this->backgroundColor);
-	}
-	frameBuffer.push_back(row);
-} */
