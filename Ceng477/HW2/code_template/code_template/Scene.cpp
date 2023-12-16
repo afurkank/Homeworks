@@ -62,15 +62,28 @@ Matrix4 get_rotation_matrix(Rotation *r) {
     Vec3 w = normalizeVec3(crossProductVec3(u, v));
     v = normalizeVec3(v);
 
-    double mMatrix[4][4] = {{u.x, u.y, u.z, 0}, {v.x, v.y, v.z, 0}, {w.x, w.y, w.z, 0}, {0, 0, 0, 1}};
-    double mMatrix_inverse[4][4] = {{u.x, v.x, w.x, 0}, {u.y, v.y, w.y, 0}, {u.z, v.z, w.z, 0}, {0, 0, 0, 1}};
-
-    double angleRad = r->angle * M_PI / 180;
-    double rMatrix[4][4] = {{1, 0, 0, 0}, {0, cos(angleRad), -sin(angleRad), 0}, 
-                            {0, sin(angleRad), cos(angleRad), 0}, {0, 0, 0, 1}};
+    double m[4][4] = {
+		{u.x, u.y, u.z, 0},
+		{v.x, v.y, v.z, 0},
+		{w.x, w.y, w.z, 0},
+		{  0,   0,   0, 1}
+		};
+    double inverse[4][4] = {
+		{u.x, v.x, w.x, 0},
+		{u.y, v.y, w.y, 0},
+		{u.z, v.z, w.z, 0},
+		{  0,   0,   0, 1}
+		};
+    double angle = r->angle * M_PI / 180;
+    double rot[4][4] = {
+		{1, 		 0, 		  0, 0},
+		{0, cos(angle), -sin(angle), 0},
+		{0, sin(angle),  cos(angle), 0},
+		{0, 		 0, 		  0, 1}
+		};
     
-    Matrix4 rot1 = multiplyMatrixWithMatrix(rMatrix, mMatrix);
-    Matrix4 R = multiplyMatrixWithMatrix(mMatrix_inverse, rot1);
+    Matrix4 rot1 = multiplyMatrixWithMatrix(rot, m);
+    Matrix4 R = multiplyMatrixWithMatrix(inverse, rot1);
 
     return R;
 }
