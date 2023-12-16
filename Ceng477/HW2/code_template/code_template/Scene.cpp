@@ -81,7 +81,6 @@ Matrix4 get_rotation_matrix(Rotation *r) {
     return R;
 }
 
-
 Matrix4 get_cam_translation_matrix(Camera *camera){
 	double e_x, e_y, e_z;
 	e_x = camera->position.x;
@@ -160,7 +159,6 @@ bool isLineVisible(double denominator, double numerator, double &tEntry, double 
         tLeave = std::min(t, tLeave);
     }
 	else if(numerator > 0) return false;
-	//cout << "returning true from isLineVisible()" << endl;
     return true;
 }
 
@@ -194,7 +192,7 @@ bool clipLine(Line &line) {
     return false;
 }
 
-void rasterizeLineHelper(Line &line, vector<vector<Color>> &image, int x, int y, Color c) {
+void rasterizeLineHelper(vector<vector<Color>> &image, int x, int y, Color c) {
 	// round(c)
 	int r, g, b;
 	Color roundedColor = roundColor(c);
@@ -246,9 +244,9 @@ void rasterizeLine(Line &line, vector<vector<Color>> &image) {
 
     for (int x = x0; x <= x1; x++) {
         if (steep) {
-            rasterizeLineHelper(line, image, y, x, col);
+            rasterizeLineHelper(image, y, x, col);
         } else {
-            rasterizeLineHelper(line, image, x, y, col);
+            rasterizeLineHelper(image, x, y, col);
         }
         err += deltaErr;
         if (err >= 0.5) {
@@ -259,7 +257,46 @@ void rasterizeLine(Line &line, vector<vector<Color>> &image) {
     }
 }
 
-void perform_pers_divide(Line &line){
+Vec3 computeBarycentricCoordinates(int x, int y, Vec4 v0, Vec4 v1, Vec4 v2) {
+    Vec3 u = Vec3(v1.x - v0.x, v2.x - v0.x, v0.x - x);
+    Vec3 v = Vec3(v1.y - v0.y, v2.y - v0.y, v0.y - y);
+    Vec3 barycentric = crossProductVec3(u, v);
+    if (abs(barycentric.z) < 1) return Vec3(-1, -1, -1); // edge case for division by zero
+    return Vec3(1.f - (barycentric.x + barycentric.y) / barycentric.z, barycentric.y / barycentric.z, barycentric.x / barycentric.z);
+}
+
+Color interpolateColor(Vec3 barycentric, Color c0, Color c1, Color c2) {
+    float r = barycentric.x * c0.r + barycentric.y * c1.r + barycentric.z * c2.r;
+    float g = barycentric.x * c0.g + barycentric.y * c1.g + barycentric.z * c2.g;
+    float b = barycentric.x * c0.b + barycentric.y * c1.b + barycentric.z * c2.b;
+    return Color(r, g, b);
+}
+
+void rasterizeTriangle(Vec4 v0, Vec4 v1, Vec4 v2, Color c0, Color c1, Color c2, vector<vector<Color>> &image) {
+    // find bounding box
+    int minX = min({v0.x, v1.x, v2.x});
+    int maxX = max({v0.x, v1.x, v2.x});
+    int minY = min({v0.y, v1.y, v2.y});
+    int maxY = max({v0.y, v1.y, v2.y});
+
+    for (int x = minX; x <= maxX; x++) {
+        for (int y = minY; y <= maxY; y++) {
+            // compute barycentric coordinates
+            Vec3 barycentric = computeBarycentricCoordinates(x, y, v0, v1, v2);
+
+            // check if the point is inside
+            if (barycentric.x >= 0 && barycentric.y >= 0 && barycentric.z >= 0) {
+                // interpolate color
+                Color interpolatedColor = interpolateColor(barycentric, c0, c1, c2);
+
+                // color the point
+                rasterizeLineHelper(image, x, y, interpolatedColor);
+            }
+        }
+    }
+}
+
+void perform_pers_divide_on_line(Line &line){
 	line.v0.x /= line.v0.t;
 	line.v0.y /= line.v0.t;
 	line.v0.z /= line.v0.t;
@@ -271,9 +308,20 @@ void perform_pers_divide(Line &line){
 	line.v1.t /= line.v1.t;
 }
 
-void perform_viewport_transformation(Matrix4 M_vp, Line &line){
+void perform_pers_divide_on_v(Vec4 &v){
+	v.x /= v.t;
+	v.y /= v.t;
+	v.z /= v.t;
+	v.t /= v.t;
+}
+
+void perform_viewport_transformation_on_line(Matrix4 M_vp, Line &line){
 	line.v0 = multiplyMatrixWithVec4(M_vp, line.v0);
 	line.v1 = multiplyMatrixWithVec4(M_vp, line.v1);
+}
+
+void perform_viewport_transformation_on_v(Matrix4 M_vp, Vec4 &v){
+	v = multiplyMatrixWithVec4(M_vp, v);
 }
 
 /*
@@ -337,6 +385,23 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 			vertex0 = multiplyMatrixWithVec4(M_composite, vertex0);
 			vertex1 = multiplyMatrixWithVec4(M_composite, vertex1);
 			vertex2 = multiplyMatrixWithVec4(M_composite, vertex2);
+			// check if the triangle facing away from the camera
+			if(this->cullingEnabled){
+				// convert to vec3 for vector operations
+				Vec3 proj_v0 = Vec3(vertex0.x, vertex0.y, vertex0.z);
+				Vec3 proj_v1 = Vec3(vertex1.x, vertex1.y, vertex1.z);
+				Vec3 proj_v2 = Vec3(vertex2.x, vertex2.y, vertex2.z);
+				// calculate normal of triangle
+				Vec3 normal = subtractVec3(proj_v1, proj_v0);
+				normal = crossProductVec3(normal, subtractVec3(proj_v2, proj_v0));
+				normal = normalizeVec3(normal);
+				// calculate dot product
+				double dotProduct = dotProductVec3(normal, proj_v0);
+				if (dotProduct < 0) { // facing away from camera
+					continue; // no need to rasterize the lines of this triangle
+				}
+			}
+
 			Color c0, c1, c2;
 			c0 = *(this->colorsOfVertices[vertex0.colorId - 1]);
 			c1 = *(this->colorsOfVertices[vertex1.colorId - 1]);
@@ -348,23 +413,43 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 				Line line3 = Line(vertex2, vertex0, c2, c0);
 				// if the projection type is perspective, apply perspective divide
 				if(camera->projectionType){
-					perform_pers_divide(line1);
-					perform_pers_divide(line2);
-					perform_pers_divide(line3);
+					perform_pers_divide_on_line(line1);
+					perform_pers_divide_on_line(line2);
+					perform_pers_divide_on_line(line3);
 				}
 				bool visible1 = clipLine(line1);
 				bool visible2 = clipLine(line2);
 				bool visible3 = clipLine(line3);
 				// after perspective divide, apply viewport transformation
 				Matrix4 M_vp = get_viewport_matrix(camera);
-				perform_viewport_transformation(M_vp, line1);
-				perform_viewport_transformation(M_vp, line2);
-				perform_viewport_transformation(M_vp, line3);
+				perform_viewport_transformation_on_line(M_vp, line1);
+				perform_viewport_transformation_on_line(M_vp, line2);
+				perform_viewport_transformation_on_line(M_vp, line3);
 				// perform line rasterization and color interpolation
 				// use the midpoint algorithm for line rasterization
 				if(visible1) rasterizeLine(line1, this->image);
 				if(visible2) rasterizeLine(line2, this->image);
 				if(visible3) rasterizeLine(line3, this->image);
+			}
+			else{
+				// solid mode, rasterize the triangle
+				// no clipping here
+
+				// if the projection type is perspective, apply perspective divide
+				if(camera->projectionType){
+					perform_pers_divide_on_v(vertex0);
+					perform_pers_divide_on_v(vertex1);
+					perform_pers_divide_on_v(vertex2);
+				}
+
+				// apply viewport matrix
+				Matrix4 M_vp = get_viewport_matrix(camera);
+				perform_viewport_transformation_on_v(M_vp, vertex0);
+				perform_viewport_transformation_on_v(M_vp, vertex1);
+				perform_viewport_transformation_on_v(M_vp, vertex2);
+
+				// rasterize the triangle
+				rasterizeTriangle(vertex0, vertex1, vertex2, c0, c1, c2, this->image);
 			}
 		}
 	}
