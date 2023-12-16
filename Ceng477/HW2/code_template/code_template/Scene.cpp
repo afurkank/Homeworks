@@ -192,7 +192,7 @@ bool clipLine(Line &line) {
     return false;
 }
 
-void rasterizeLineHelper(vector<vector<Color>> &image, int x, int y, Color c) {
+void rasterizeHelper(vector<vector<Color>> &image, int x, int y, Color c) {
 	// round(c)
 	int r, g, b;
 	Color roundedColor = roundColor(c);
@@ -244,9 +244,9 @@ void rasterizeLine(Line &line, vector<vector<Color>> &image) {
 
     for (int x = x0; x <= x1; x++) {
         if (steep) {
-            rasterizeLineHelper(image, y, x, col);
+            rasterizeHelper(image, y, x, col);
         } else {
-            rasterizeLineHelper(image, x, y, col);
+            rasterizeHelper(image, x, y, col);
         }
         err += deltaErr;
         if (err >= 0.5) {
@@ -257,40 +257,64 @@ void rasterizeLine(Line &line, vector<vector<Color>> &image) {
     }
 }
 
-Vec3 computeBarycentricCoordinates(int x, int y, Vec4 v0, Vec4 v1, Vec4 v2) {
-    Vec3 u = Vec3(v1.x - v0.x, v2.x - v0.x, v0.x - x);
-    Vec3 v = Vec3(v1.y - v0.y, v2.y - v0.y, v0.y - y);
-    Vec3 barycentric = crossProductVec3(u, v);
-    if (abs(barycentric.z) < 1) return Vec3(-1, -1, -1); // edge case for division by zero
-    return Vec3(1.f - (barycentric.x + barycentric.y) / barycentric.z, barycentric.y / barycentric.z, barycentric.x / barycentric.z);
+// Edge function
+double edgeFunction(const Vec4 &a, const Vec4 &b, const Vec4 &c) {
+    return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
 }
 
-Color interpolateColor(Vec3 barycentric, Color c0, Color c1, Color c2) {
-    float r = barycentric.x * c0.r + barycentric.y * c1.r + barycentric.z * c2.r;
-    float g = barycentric.x * c0.g + barycentric.y * c1.g + barycentric.z * c2.g;
-    float b = barycentric.x * c0.b + barycentric.y * c1.b + barycentric.z * c2.b;
-    return Color(r, g, b);
+// Color interpolation
+Color interpolateColor(double alpha, double beta, double gamma, const Color &c0, const Color &c1, const Color &c2) {
+    double r = alpha * c0.r + beta * c1.r + gamma * c2.r;
+    double g = alpha * c0.g + beta * c1.g + gamma * c2.g;
+    double b = alpha * c0.b + beta * c1.b + gamma * c2.b;
+    return Color(round(r), round(g), round(b));
 }
 
-void rasterizeTriangle(Vec4 v0, Vec4 v1, Vec4 v2, Color c0, Color c1, Color c2, vector<vector<Color>> &image) {
+// Draw a single pixel in the image
+void rasterizePoint(vector<vector<Color>> &image, int x, int y, const Color &color) {
+    if (x >= 0 && x < image.size() && y >= 0 && y < image[0].size()) {
+        image[x][y] = color;
+    }
+}
+
+void rasterizeTriangle(Vec4 v0, Vec4 v1, Vec4 v2, Color c0, Color c1, Color c2, vector<vector<Color>> &image, Camera *camera) {
     // find bounding box
     int minX = min({v0.x, v1.x, v2.x});
+	minX = (minX < 0) ? 0 : minX;
+	minX = (minX > camera->horRes - 1) ? camera->horRes-1 : minX;
     int maxX = max({v0.x, v1.x, v2.x});
+	maxX = (maxX < 0) ? 0 : maxX;
+	maxX = (maxX > camera->horRes - 1) ? camera->horRes-1 : maxX;
     int minY = min({v0.y, v1.y, v2.y});
+	minY = (minY < 0) ? 0 : minY;
+	minY = (minY > camera->verRes - 1) ? camera->verRes-1 : minY;
     int maxY = max({v0.y, v1.y, v2.y});
+	maxY = (maxY < 0) ? 0 : maxY;
+	maxY = (maxY > camera->verRes - 1) ? camera->verRes-1 : maxY;
 
+    // Precompute edge function denominators
+    double f12_v0 = edgeFunction(v1, v2, v0);
+    double f20_v1 = edgeFunction(v2, v0, v1);
+    double f01_v2 = edgeFunction(v0, v1, v2);
+
+    // Iterate over the bounding box
     for (int x = minX; x <= maxX; x++) {
         for (int y = minY; y <= maxY; y++) {
-            // compute barycentric coordinates
-            Vec3 barycentric = computeBarycentricCoordinates(x, y, v0, v1, v2);
+            Vec4 p = Vec4(x, y, 0, 0);
 
-            // check if the point is inside
-            if (barycentric.x >= 0 && barycentric.y >= 0 && barycentric.z >= 0) {
-                // interpolate color
-                Color interpolatedColor = interpolateColor(barycentric, c0, c1, c2);
+            // Calculate barycentric coordinates using edge functions
+            double alpha = edgeFunction(v1, v2, p) / f12_v0;
+            double beta  = edgeFunction(v2, v0, p) / f20_v1;
+            double gamma = edgeFunction(v0, v1, p) / f01_v2;
 
-                // color the point
-                rasterizeLineHelper(image, x, y, interpolatedColor);
+            // Check if point is inside the triangle
+            if (alpha >= 0 && beta >= 0 && gamma >= 0) {
+                // Interpolate color
+                Color c = interpolateColor(alpha, beta, gamma, c0, c1, c2);
+
+                // Draw the pixel
+                //rasterizePoint(image, x, y, c);
+				rasterizeHelper(image, x, y, c);
             }
         }
     }
@@ -449,7 +473,7 @@ void Scene::forwardRenderingPipeline(Camera *camera)
 				perform_viewport_transformation_on_v(M_vp, vertex2);
 
 				// rasterize the triangle
-				rasterizeTriangle(vertex0, vertex1, vertex2, c0, c1, c2, this->image);
+				rasterizeTriangle(vertex0, vertex1, vertex2, c0, c1, c2, this->image, camera);
 			}
 		}
 	}
@@ -780,51 +804,22 @@ void Scene::convertPPMToPNG(string ppmFileName)
 	command = "convert " + ppmFileName + " " + ppmFileName + ".png";
 	system(command.c_str());
 }
-/* // Implement backface culling
-		if(this->cullingEnabled){
-			for (j = 0; j < faces.size(); j++) {
-				int v0 = faces[j].vertexIds[0] - 1;
-				int v1 = faces[j].vertexIds[1] - 1;
-				int v2 = faces[j].vertexIds[2] - 1;
+/* // Initialize the depth buffer
+vector<vector<double>> depthBuffer;
+for (int j = 0; j < camera->horRes; j++) {
+	vector<double> row;
+	for (int k = 0; k < camera->verRes; k++) {
+		row.push_back(1.01);
+	}
+	depthBuffer.push_back(row);
+}
 
-				Vec3* vertex0 = vertices[v0];
-				Vec3* vertex1 = vertices[v1];
-				Vec3* vertex2 = vertices[v2];
-
-				Vec3 normal = subtractVec3(*vertex1, *vertex0);
-				normal = crossProductVec3(normal, subtractVec3(*vertex2, *vertex0));
-				normal = normalizeVec3(normal);
-
-				Vec3 cameraToFace = subtractVec3(*vertex0, camera->position);
-
-				double dotProduct = dotProductVec3(normal, cameraToFace);
-				if (dotProduct < 0) {
-					// Remove the face from the list of faces
-					faces.erase(faces.begin() + j);
-
-					j--;
-				}
-			}
-		} */
-		// Else, perform triangle rasterization
-		// use barycentric coordinates for color interpolation
-
-		/* // Initialize the depth buffer
-		vector<vector<double>> depthBuffer;
-		for (int j = 0; j < camera->horRes; j++) {
-			vector<double> row;
-			for (int k = 0; k < camera->verRes; k++) {
-				row.push_back(1.01);
-			}
-			depthBuffer.push_back(row);
-		}
-
-		// Initialize the frame buffer
-		vector<vector<Color>> frameBuffer;
-		for (int j = 0; j < camera->horRes; j++) {
-			vector<Color> row;
-			for (int k = 0; k < camera->verRes; k++) {
-				row.push_back(this->backgroundColor);
-			}
-			frameBuffer.push_back(row);
-		} */
+// Initialize the frame buffer
+vector<vector<Color>> frameBuffer;
+for (int j = 0; j < camera->horRes; j++) {
+	vector<Color> row;
+	for (int k = 0; k < camera->verRes; k++) {
+		row.push_back(this->backgroundColor);
+	}
+	frameBuffer.push_back(row);
+} */
