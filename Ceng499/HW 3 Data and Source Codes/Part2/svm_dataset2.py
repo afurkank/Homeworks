@@ -28,13 +28,13 @@ for _ in range(5): # repeat the cross validation 5 times
     dataset_shuffled = dataset[indices]
     labels_shuffled = labels[indices]
 
-    # standardization
+    # standardize
     scaler = StandardScaler()
     scaler.fit(dataset_shuffled) # calculate mean and std
     dataset_shuffled = scaler.transform(dataset_shuffled) # apply standardization to dataset
 
     svc = SVC(degree=10) # get svm
-    scoring = 'accuracy' # get accuracy func as metric for evaluation
+    scoring = 'accuracy' # accuracy metric for evaluation
     k = 10 # num of folds
     clf = GridSearchCV(svc, parameters, scoring=scoring, cv=k, verbose=True)
     clf.fit(dataset_shuffled, labels_shuffled)
@@ -66,27 +66,15 @@ result_dict = {
     "Average STD": avg_std_scores
 }
 
-# create a DataFrame
+# create a dataframe
 df = pd.DataFrame(result_dict)
 
-# display the DataFrame
+# display the dataframe
 print(df)
 
-import matplotlib.pyplot as plt
-
-formatted_df = df.round(2)
-fig, ax = plt.subplots(figsize=(16, 9)) # Adjust the size as needed
-ax.axis('tight')
-ax.axis('off')
-ax.table(cellText=formatted_df.values, colLabels=formatted_df.columns, loc='center')
-
-plt.savefig("Table.png")
-plt.show()
-plt.close()
-
-# Convert DataFrame to HTML
+# convert df to HTML
 html = df.to_html()
 
-# Optionally, write it to an HTML file
+# write it to an HTML file
 with open('dataframe.html', 'w') as f:
     f.write(html)
