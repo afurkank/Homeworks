@@ -92,7 +92,7 @@ for i, (train_index_outer, test_index_outer) in enumerate(rskf_outer.split(datas
     X_test_outer, y_test_outer   = dataset[test_index_outer], labels[test_index_outer]
 
     # standardize
-    scaler        = StandardScaler()
+    scaler = StandardScaler()
     scaler.fit(X_train_outer) # calculate mean and std
     X_train_outer = scaler.transform(X_train_outer) # apply standardization
     X_test_outer  = scaler.transform(X_test_outer)
@@ -106,51 +106,19 @@ for i, (train_index_outer, test_index_outer) in enumerate(rskf_outer.split(datas
     grid_search_dt  = GridSearchCV(DecisionTreeClassifier(), param_grid_dt, scoring=scoring, refit='accuracy', cv=rskf_inner, verbose=True).fit(X_train_outer, y_train_outer)
     grid_search_rf  = GridSearchCV(RandomForestClassifier(), param_grid_rf, scoring=scoring, refit='accuracy', cv=rskf_inner, verbose=True).fit(X_train_outer, y_train_outer)
 
-    avg_acc_knn = np.zeros((4,)) # 4 configs are tested for knn
-    avg_f1_knn  = np.zeros((4,)) # same as above
-    avg_acc_svc = np.zeros((8,)) # 8 configs are tested for svc
-    avg_f1_svc  = np.zeros((8,)) # same as above
-    avg_acc_dt  = np.zeros((6,)) # 6 configs are tested for dt
-    avg_f1_dt   = np.zeros((6,)) # same as above
-    avg_acc_rf  = np.zeros((8,)) # 8 configs are tested for rf
-    avg_f1_rf   = np.zeros((8,)) # same as above
-
     # average accuracy and f1 over all inner splits
     for j in range(25): # 5 splits * 5 repetitions
         key_acc = f"split{j}_test_accuracy"
         key_f1  = f"split{j}_test_f1"
 
-        avg_acc_knn += grid_search_knn.cv_results_[key_acc]
-        avg_f1_knn  += grid_search_knn.cv_results_[key_f1]
-
-        avg_acc_svc += grid_search_svc.cv_results_[key_acc]
-        avg_f1_svc  += grid_search_svc.cv_results_[key_f1]
-
-        avg_acc_dt  += grid_search_dt.cv_results_[key_acc]
-        avg_f1_dt   += grid_search_dt.cv_results_[key_f1]
-
-        avg_acc_rf  += grid_search_rf.cv_results_[key_acc]
-        avg_f1_rf   += grid_search_rf.cv_results_[key_f1]
-
-    # calculate average
-    avg_acc_knn /= 25
-    avg_f1_knn  /= 25
-    avg_acc_svc /= 25
-    avg_f1_svc  /= 25
-    avg_acc_dt  /= 25
-    avg_f1_dt   /= 25
-    avg_acc_rf  /= 25
-    avg_f1_rf   /= 25
-
-    # add inner average to overall average
-    avg_avg_acc_knn += avg_acc_knn
-    avg_avg_f1_knn  += avg_f1_knn
-    avg_avg_acc_svc += avg_acc_svc
-    avg_avg_f1_svc  += avg_f1_svc
-    avg_avg_acc_dt  += avg_acc_dt
-    avg_avg_f1_dt   += avg_f1_dt
-    avg_avg_acc_rf  += avg_acc_rf
-    avg_avg_f1_rf   += avg_f1_rf
+        avg_avg_acc_knn += grid_search_knn.cv_results_[key_acc] / 25
+        avg_avg_f1_knn  += grid_search_knn.cv_results_[key_f1] / 25
+        avg_avg_acc_svc += grid_search_svc.cv_results_[key_acc] / 25
+        avg_avg_f1_svc  += grid_search_svc.cv_results_[key_f1] / 25
+        avg_avg_acc_dt  += grid_search_dt.cv_results_[key_acc] / 25
+        avg_avg_f1_dt   += grid_search_dt.cv_results_[key_f1] / 25
+        avg_avg_acc_rf  += grid_search_rf.cv_results_[key_acc] / 25
+        avg_avg_f1_rf   += grid_search_rf.cv_results_[key_f1] / 25
 
     # add inner mean and std to overall average
     avg_mean_acc_knn += grid_search_knn.cv_results_["mean_test_accuracy"]
@@ -366,7 +334,7 @@ with open('dataframe_all.html', 'w') as f:
 
 """ ##############   TRAINING DECISION TREE CLASSIFIER      ############## """
 
-print("###   TRAIING THE DECISION TREE CLASSIFIER   ###")
+print("\n###   TRAINING THE DECISION TREE CLASSIFIER   ###")
 
 # load data without one-hot encoding
 dataset_, labels_ = DataLoader.load_credit(data_path)
@@ -388,7 +356,7 @@ print(importance_dict)
 
 """ ##############   TRAINING SUPPORT VECTOR CLASSIFIER   ##############  """
 
-print("###   TRAIING THE SUPPORT VECTOR CLASSIFIER   ###")
+print("\n###   TRAIING THE SUPPORT VECTOR CLASSIFIER   ###")
 
 # load data without one-hot encoding
 dataset, labels = DataLoader.load_credit_with_onehot(data_path)
@@ -402,4 +370,4 @@ sv_classifier = best_svc_model # get the best model
 # train the svc
 sv_classifier.fit(dataset, labels) # use one-hot encoded data
 
-print(f"\nThe support vectors are:\n{sv_classifier.support_vectors_}")
+print(f"\nThe support vectors are:\n{scaler.inverse_transform(sv_classifier.support_vectors_)}")

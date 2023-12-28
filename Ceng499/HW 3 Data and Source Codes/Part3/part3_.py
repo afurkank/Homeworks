@@ -33,17 +33,13 @@ print(importance_dict)
 """ ##############   TRAINING A SUPPORT VECTOR CLASSIFIER   ##############  """
 # load data without one-hot encoding
 dataset, labels = DataLoader.load_credit_with_onehot(data_path)
-print(len(dataset))
+
 # standardize
 scaler        = StandardScaler()
 scaler.fit_transform(dataset) # calculate mean and std
 
-sv_classifier = SVC(C=1, gamma='scale', kernel="linear")
+sv_classifier = SVC(C=1, gamma='scale', kernel='rbf')
 
 sv_classifier.fit(dataset, labels)
-
-support_vector_arr = sv_classifier.support_vectors_
-print("\n", len(support_vector_arr))
-print(sv_classifier.n_support_)
-print(support_vector_arr[0])
-print(f"\nThe support vectors are:\n{sv_classifier.support_vectors_}")
+print(scaler.inverse_transform(sv_classifier.support_vectors_)[0])
+print(f"\nThe support vectors are:\n{scaler.inverse_transform(sv_classifier.support_vectors_)}")
