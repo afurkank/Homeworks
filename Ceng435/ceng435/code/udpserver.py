@@ -5,6 +5,9 @@ import itertools
 import select
 import time
 
+def verify_packet(data, checksum):
+    return hashlib.md5(data).hexdigest() == checksum
+
 def file_chunks(file_path, is_large, chunk_size=1024):
     """
     read 1024 byte chunks out of a given file until 
@@ -66,6 +69,7 @@ def server():
             nextseqnum= 0
             base = 0
             packets_buffer = {}
+            packet_send_times = {}
 
             large_file = f'large-{i}.obj'
             small_file = f'small-{i}.obj'
@@ -74,57 +78,83 @@ def server():
             small_chunks = file_chunks(small_file, False) # read ith small object
 
             chunk_iterator = interleave_chunks(large_chunks, small_chunks)
-            for large_chunk, small_chunk in interleave_chunks(large_chunks, small_chunks):
+            object_sent = False
+            while not object_sent:
                 while nextseqnum < base + window:
+                    try:
+                        large_chunk, small_chunk = next(chunk_iterator)
+                    except StopIteration:
+                        object_sent = True
+                        break # no more chunks to send
+
                     if large_chunk:
                         data, file_seq_no, is_large = large_chunk
 
-                        packet = None
-                        if file_seq_no == len(large_chunks) - 1:
-                            # end packet
-                            packet = create_packet(b'', nextseqnum, 0, is_large=True, is_end=True)
-                        else:
-                            packet = create_packet(data, nextseqnum, file_seq_no, is_large=True, is_end=False)
+                        is_end = True if file_seq_no == len(large_chunks) - 1 else False
+                        packet = create_packet(data, nextseqnum, file_seq_no, is_large=True, is_end=is_end)
                         
                         s.sendto(packet, client_address)
 
                         packets_buffer[nextseqnum] = packet
+                        if base == nextseqnum:
+                            packet_send_times[nextseqnum] = time.time()
                         nextseqnum += 1
-
-                        large_chunk = next(large_chunks, None)
 
                     if small_chunk:
                         data, file_seq_no, is_large = small_chunk
 
-                        packet = None
-                        if file_seq_no == len(small_chunks) - 1:
-                            # end packet
-                            packet = create_packet(b'', nextseqnum, 0, is_large=False, is_end=True)
-                        else:
-                            packet = create_packet(data, nextseqnum, file_seq_no, is_large=False, is_end=False)
+                        is_end = True if file_seq_no == len(small_chunks) - 1 else False
+                        packet = create_packet(data, nextseqnum, file_seq_no, is_large=False, is_end=is_end)
                         
                         s.sendto(packet, client_address)
 
                         packets_buffer[nextseqnum] = packet
+                        if base == nextseqnum:
+                            packet_send_times[nextseqnum] = time.time()
                         nextseqnum += 1
 
-                        small_chunk = next(small_chunks, None)
+                while True:
 
-                # listen for ACKS
-                ready = select.select([s], [], [], timeout)
-                # if there is ACK, remove packets up to ACK number from buffer
-                if ready[0]:
-                    ack_packet, _ = s.recvfrom(2048)
-                    ack_no = struct.unpack('I', ack_packet)[0]
-                    base = ack_no + 1
+                    # If all packets have been sent and acknowledged, exit loop
+                    if base == nextseqnum and not packets_buffer:
+                        break
 
-                    for seq in range(ack_no + 1):
-                        packets_buffer.pop(seq, None)
-                
-                # if timeout occurs, retransmit all packets in buffer
-                if not ready[0]:
-                    for seq in range(base, nextseqnum):
-                        s.sendto(packets_buffer[seq], client_address)
+                    """# Calculate remaining time for the oldest packet before timeout
+                    if base in packet_send_times:
+                        time_since_last_packet = time.time() - packet_send_times[base]
+                        remaining_time = max(0, timeout - time_since_last_packet)
+                    else:
+                        remaining_time = timeout"""
+
+                    # Listen for ACKs or wait for the timeout
+                    ready = select.select([s], [], [], timeout)
+                    if ready[0]:
+                        # ACK received
+                        ack_packet, _ = s.recvfrom(bufferSize)
+
+                        header = ack_packet[:36]
+                        data = ack_packet[36:]
+                        ack_no, checksum = struct.unpack('I32s', header)
+                        checksum = checksum.decode().strip('\x00')
+
+                        # if ack packet is corrupted, ignore it and wait for another
+                        if not verify_packet(data, checksum):
+                            continue
+
+                        # Slide window
+                        base = ack_no + 1
+
+                        # Remove acknowledged packets and their send times from buffers
+                        to_remove = [seq for seq in packets_buffer if seq < base]
+                        for seq in to_remove:
+                            del packets_buffer[seq]
+                            del packet_send_times[seq]
+
+                    elif base in packet_send_times and (time.time() - packet_send_times[base]) >= timeout:
+                        # Timeout occurred, resend all packets in the window
+                        for seq in range(base, nextseqnum):
+                            s.sendto(packets_buffer[seq], client_address)
+                            packet_send_times[seq] = time.time()  # Update send time
 
 if __name__ == '__main__':
     server()
