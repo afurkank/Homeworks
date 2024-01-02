@@ -6,8 +6,6 @@ class Packet:
         self.file_seq_no = file_seq_no
         self.packet_type = packet_type
         self.checksum = checksum
-
-
     def get_header():
         pass
     def get_payload():
