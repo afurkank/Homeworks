@@ -12,6 +12,13 @@ def reassemble_file(received_chunks: dict, file_name: str):
     with open(file_name, 'wb') as file:
         file.write(file_data)
 
+def create_packet(ack_no):
+    data = b'This is a dummy data for ACK packet purposes'
+    checksum = hashlib.md5(data).hexdigest()
+    format = 'I32s'
+    header = struct.pack(format, ack_no, checksum.encode())
+    return header + data
+
 def client():
     host = 'server'
     port = 8000
@@ -20,56 +27,62 @@ def client():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
         s.bind((host, port))
 
-        expected_seq_no = 0
-        received_packets = {}
-        large_chunks = {} # big boi chonkers OwO
-        small_chunks = {} # cute little chunks UwU
         large_obj_no = 0
         small_obj_no = 0
 
-        while True:
-            packet, addr = s.recvfrom(2048)   
-            header = packet[:42]  # header was created as 42 bytes on client side
-            data = packet[42:] # the rest of the packet is payload
-            format = 'IIBB32s' # < u_int - u_int - u_char - u_char - 32 byte string > = 4+4+1+1+32 = 42 bytes
-            nextseqnum, file_seq_no, is_end, packet_type, checksum = struct.unpack(format, header) # unpack
-            checksum = checksum.decode().strip('\x00')
+        while large_obj_no < 9 or small_obj_no < 9:
+            expected_seq_no = 0
+            received_packets = {}
 
-            if verify_packet(data, checksum):
-                if nextseqnum == expected_seq_no: # expected packet received
-                    received_packets[nextseqnum] = (data, packet_type)
-                    expected_seq_no += 1
+            large_chunks = {}
+            small_chunks = {}
 
-                    if packet_type: 
-                        large_chunks[file_seq_no] = data
-                    else: 
-                        small_chunks[file_seq_no] = data
+            while True:
+                packet, addr = s.recvfrom(2048)
+                header = packet[:42]
+                data = packet[42:]
+                format = 'IIBB32s'
+                nextseqnum, file_seq_no, is_end, packet_type, checksum = struct.unpack(format, header)
+                checksum = checksum.decode().strip('\x00')
 
-                    if is_end:
-                        file_name = f"received_large-{large_obj_no}.obj" if packet_type else f"received_small-{small_obj_no}.obj"
-                        chunks = large_chunks if packet_type else small_chunks
-                        
+                if verify_packet(data, checksum): # packet is not corrupt
+                    if nextseqnum == expected_seq_no: # expected packet received
+                        received_packets[nextseqnum] = (data, packet_type)
+
+                        expected_seq_no += 1
+
                         if packet_type:
-                            large_obj_no += 1
+                            large_chunks[file_seq_no] = data
                         else:
-                            small_obj_no += 1
-                        
-                        reassemble_file(chunks, file_name)
-                        # Send final ACK for the end packet
-                        s.sendto(struct.pack('I', expected_seq_no - 1), addr)
-                        
-                        if large_obj_no == 9 and small_obj_no == 9:
-                            # all objects received
+                            small_chunks[file_seq_no] = data
+
+                        if is_end:
+                            file_name = f"received_large-{large_obj_no}.obj" if packet_type else f"received_small-{small_obj_no}.obj"
+                            chunks = large_chunks if packet_type else small_chunks
+                            
+                            # reassemble the file
+                            reassemble_file(chunks, file_name)
+                            # send final ACK for the end packet
+                            ack_packet = create_packet(expected_seq_no - 1)
+                            s.sendto(ack_packet, addr)
+
+                            if packet_type:
+                                large_obj_no += 1
+                            else:
+                                small_obj_no += 1
                             break
+                        else:
+                            # send ACK for non-end packets
+                            ack_packet = create_packet(expected_seq_no - 1)
+                            s.sendto(ack_packet, addr)
                     else:
-                        # send ACK for non-end packets
-                        s.sendto(struct.pack('I', expected_seq_no - 1), addr)
+                        # do not register packet, send ACK again
+                        ack_packet = create_packet(expected_seq_no - 1)
+                        s.sendto(ack_packet, addr)
                 else:
                     # do not register packet, send ACK again
-                    s.sendto(struct.pack('I', expected_seq_no - 1), addr)
-            else:
-                # do not register packet, send ACK again
-                s.sendto(struct.pack('I', expected_seq_no - 1), addr)
+                    ack_packet = create_packet(expected_seq_no - 1)
+                    s.sendto(ack_packet, addr)
         s.close()
 
 if __name__ == '__main__':

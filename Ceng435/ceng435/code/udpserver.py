@@ -11,8 +11,7 @@ def verify_packet(data, checksum):
 def file_chunks(file_path, is_large, chunk_size=1024):
     """
     read 1024 byte chunks out of a given file until 
-    there is no more data left to read.
-    return (chunk, seq_no, is_large)
+    there is no more data left to read
     """
     with open(file_path, 'rb') as file:
         seq_no = 0 # this is to represent a chunks place in a file for reassembly
@@ -23,26 +22,13 @@ def file_chunks(file_path, is_large, chunk_size=1024):
             chunk = file.read(chunk_size) # read 1024 bytes
 
 def create_packet(data, nextseqnum, file_seq_no, is_large, is_end):
-    """
-    this func creates a packet
-
-    here is the process:
-    - read checksum from .md5 file
-    - create format
-    - create header
-    - merge header and data
-    """
     packet_type = 1 if is_large else 0
     end_packet = 1 if is_end else 0
 
     checksum = hashlib.md5(data).hexdigest() # compute checksum from .md5 file
-
     format = 'IIBB32s' # < u_int - u_int - u_char - u_char - 32 byte string > = 4+4+1+1+32 = 42 bytes
-
     #TODO: do we know that the size of checksum of data is always 32 bytes(32s)?
-
     header = struct.pack(format, nextseqnum, file_seq_no, end_packet, packet_type, checksum.encode()) # create packet with struct library
-    
     return header + data
 
 def interleave_chunks(large_chunks, small_chunks):
@@ -114,17 +100,9 @@ def server():
                         nextseqnum += 1
 
                 while True:
-
                     # If all packets have been sent and acknowledged, exit loop
                     if base == nextseqnum and not packets_buffer:
                         break
-
-                    """# Calculate remaining time for the oldest packet before timeout
-                    if base in packet_send_times:
-                        time_since_last_packet = time.time() - packet_send_times[base]
-                        remaining_time = max(0, timeout - time_since_last_packet)
-                    else:
-                        remaining_time = timeout"""
 
                     # Listen for ACKs or wait for the timeout
                     ready = select.select([s], [], [], timeout)
@@ -155,6 +133,6 @@ def server():
                         for seq in range(base, nextseqnum):
                             s.sendto(packets_buffer[seq], client_address)
                             packet_send_times[seq] = time.time()  # Update send time
-
+        s.close()
 if __name__ == '__main__':
     server()
