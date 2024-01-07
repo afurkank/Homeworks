@@ -240,7 +240,7 @@ bool ReadDataFromFile(
 	return true;
 }
 
-GLuint createVS(const char* shaderName)
+GLuint createVS(const char* shaderName) // vertex shader
 {
 	string shaderSource;
 
@@ -265,7 +265,7 @@ GLuint createVS(const char* shaderName)
 	return vs;
 }
 
-GLuint createFS(const char* shaderName)
+GLuint createFS(const char* shaderName) // fragment shader
 {
 	string shaderSource;
 
