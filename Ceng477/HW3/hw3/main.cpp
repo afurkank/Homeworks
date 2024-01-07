@@ -68,14 +68,14 @@ struct Face
 	GLuint vIndex[3], tIndex[3], nIndex[3];
 };
 
-vector<Vertex> gVertices;
-vector<Texture> gTextures;
-vector<Normal> gNormals;
-vector<Face> gFaces;
+vector<Vertex> gVerticesBunny, gVerticesBlock, gVerticesQuad;
+vector<Texture> gTexturesBunny, gTexturesBlock, gTexturesQuad;
+vector<Normal> gNormalsBunny, gNormalsBlock, gNormalsQuad;
+vector<Face> gFacesBunny, gFacesBlock, gFacesQuad;
 
-GLuint gVertexAttribBuffer, gIndexBuffer;
-GLint gInVertexLoc, gInNormalLoc;
-int gVertexDataSizeInBytes, gNormalDataSizeInBytes;
+GLuint gVertexAttribBufferBunny, gIndexBufferBunny, gVertexAttribBufferBlock, gIndexBufferBlock, gVertexAttribBufferQuad, gIndexBufferQuad;
+GLint gInVertexLocBunny, gInNormalLocBunny, gInVertexLocBlock, gInNormalLocBlock, gInVertexLocQuad, gInNormalLocQuad;
+int gVertexDataSizeInBytesBunny, gNormalDataSizeInBytesBunny, gVertexDataSizeInBytesBlock, gNormalDataSizeInBytesBlock, gVertexDataSizeInBytesQuad, gNormalDataSizeInBytesQuad;
 
 bool ParseObj(const string& fileName)
 {
@@ -103,19 +103,19 @@ bool ParseObj(const string& fileName)
 					{
 						str >> tmp; // consume "vt"
 						str >> c1 >> c2;
-						gTextures.push_back(Texture(c1, c2));
+						gTexturesBunny.push_back(Texture(c1, c2));
 					}
 					else if (curLine[1] == 'n') // normal
 					{
 						str >> tmp; // consume "vn"
 						str >> c1 >> c2 >> c3;
-						gNormals.push_back(Normal(c1, c2, c3));
+						gNormalsBunny.push_back(Normal(c1, c2, c3));
 					}
 					else // vertex
 					{
 						str >> tmp; // consume "v"
 						str >> c1 >> c2 >> c3;
-						gVertices.push_back(Vertex(c1, c2, c3));
+						gVerticesBunny.push_back(Vertex(c1, c2, c3));
 					}
 				}
 				else if (curLine[0] == 'f') // face
@@ -142,7 +142,7 @@ bool ParseObj(const string& fileName)
 						tIndex[c] -= 1;
 					}
 
-					gFaces.push_back(Face(vIndex, tIndex, nIndex));
+					gFacesBunny.push_back(Face(vIndex, tIndex, nIndex));
 				}
 				else
 				{
@@ -165,28 +165,28 @@ bool ParseObj(const string& fileName)
 	}
 
 	/*
-	for (int i = 0; i < gVertices.size(); ++i)
+	for (int i = 0; i < gVerticesBunny.size(); ++i)
 	{
 		Vector3 n;
 
-		for (int j = 0; j < gFaces.size(); ++j)
+		for (int j = 0; j < gFacesBunny.size(); ++j)
 		{
 			for (int k = 0; k < 3; ++k)
 			{
-				if (gFaces[j].vIndex[k] == i)
+				if (gFacesBunny[j].vIndex[k] == i)
 				{
 					// face j contains vertex i
-					Vector3 a(gVertices[gFaces[j].vIndex[0]].x,
-							  gVertices[gFaces[j].vIndex[0]].y,
-							  gVertices[gFaces[j].vIndex[0]].z);
+					Vector3 a(gVerticesBunny[gFacesBunny[j].vIndex[0]].x,
+							  gVerticesBunny[gFacesBunny[j].vIndex[0]].y,
+							  gVerticesBunny[gFacesBunny[j].vIndex[0]].z);
 
-					Vector3 b(gVertices[gFaces[j].vIndex[1]].x,
-							  gVertices[gFaces[j].vIndex[1]].y,
-							  gVertices[gFaces[j].vIndex[1]].z);
+					Vector3 b(gVerticesBunny[gFacesBunny[j].vIndex[1]].x,
+							  gVerticesBunny[gFacesBunny[j].vIndex[1]].y,
+							  gVerticesBunny[gFacesBunny[j].vIndex[1]].z);
 
-					Vector3 c(gVertices[gFaces[j].vIndex[2]].x,
-							  gVertices[gFaces[j].vIndex[2]].y,
-							  gVertices[gFaces[j].vIndex[2]].z);
+					Vector3 c(gVerticesBunny[gFacesBunny[j].vIndex[2]].x,
+							  gVerticesBunny[gFacesBunny[j].vIndex[2]].y,
+							  gVerticesBunny[gFacesBunny[j].vIndex[2]].z);
 
 					Vector3 ab = b - a;
 					Vector3 ac = c - a;
@@ -199,11 +199,11 @@ bool ParseObj(const string& fileName)
 
 		n.normalize();
 
-		gNormals.push_back(Normal(n.x, n.y, n.z));
+		gNormalsBunny.push_back(Normal(n.x, n.y, n.z));
 	}
 	*/
 
-	assert(gVertices.size() == gNormals.size());
+	assert(gVerticesBunny.size() == gNormalsBunny.size());
 
 	return true;
 }
@@ -345,7 +345,7 @@ void initShaders()
 	}
 }
 
-void initVBO()
+void initVBO() // Vertex Buffer Object
 {
 	GLuint vao;
 	glGenVertexArrays(1, &vao);
@@ -353,41 +353,44 @@ void initVBO()
 	glBindVertexArray(vao);
 	cout << "vao = " << vao << endl;
 
+    // the relevant buffers must still be enabled
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 	assert(glGetError() == GL_NONE);
 
-	glGenBuffers(1, &gVertexAttribBuffer);
-	glGenBuffers(1, &gIndexBuffer);
+    // generate buffers to be reused at each drawing
+	glGenBuffers(1, &gVertexAttribBufferBunny); // vertex attribute buffer (position, color, normal, etc.)
+	glGenBuffers(1, &gIndexBufferBunny); // element array buffer (indices)
 
-	assert(gVertexAttribBuffer > 0 && gIndexBuffer > 0);
+	assert(gVertexAttribBufferBunny > 0 && gIndexBufferBunny > 0);
 
-	glBindBuffer(GL_ARRAY_BUFFER, gVertexAttribBuffer);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gIndexBuffer);
+    // bind the buffers to meaningful GPU locations
+	glBindBuffer(GL_ARRAY_BUFFER, gVertexAttribBufferBunny);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gIndexBufferBunny);
 
-	gVertexDataSizeInBytes = gVertices.size() * 3 * sizeof(GLfloat);
-	gNormalDataSizeInBytes = gNormals.size() * 3 * sizeof(GLfloat);
-	int indexDataSizeInBytes = gFaces.size() * 3 * sizeof(GLuint);
-	GLfloat* vertexData = new GLfloat[gVertices.size() * 3];
-	GLfloat* normalData = new GLfloat[gNormals.size() * 3];
-	GLuint* indexData = new GLuint[gFaces.size() * 3];
+	gVertexDataSizeInBytesBunny = gVerticesBunny.size() * 3 * sizeof(GLfloat);
+	gNormalDataSizeInBytesBunny = gNormalsBunny.size() * 3 * sizeof(GLfloat);
+	int indexDataSizeInBytes = gFacesBunny.size() * 3 * sizeof(GLuint);
+	GLfloat* vertexData = new GLfloat[gVerticesBunny.size() * 3];
+	GLfloat* normalData = new GLfloat[gNormalsBunny.size() * 3];
+	GLuint* indexData = new GLuint[gFacesBunny.size() * 3];
 
 	float minX = 1e6, maxX = -1e6;
 	float minY = 1e6, maxY = -1e6;
 	float minZ = 1e6, maxZ = -1e6;
 
-	for (int i = 0; i < gVertices.size(); ++i)
+	for (int i = 0; i < gVerticesBunny.size(); ++i)
 	{
-		vertexData[3 * i] = gVertices[i].x;
-		vertexData[3 * i + 1] = gVertices[i].y;
-		vertexData[3 * i + 2] = gVertices[i].z;
+		vertexData[3 * i] = gVerticesBunny[i].x;
+		vertexData[3 * i + 1] = gVerticesBunny[i].y;
+		vertexData[3 * i + 2] = gVerticesBunny[i].z;
 
-		minX = std::min(minX, gVertices[i].x);
-		maxX = std::max(maxX, gVertices[i].x);
-		minY = std::min(minY, gVertices[i].y);
-		maxY = std::max(maxY, gVertices[i].y);
-		minZ = std::min(minZ, gVertices[i].z);
-		maxZ = std::max(maxZ, gVertices[i].z);
+		minX = std::min(minX, gVerticesBunny[i].x);
+		maxX = std::max(maxX, gVerticesBunny[i].x);
+		minY = std::min(minY, gVerticesBunny[i].y);
+		maxY = std::max(maxY, gVerticesBunny[i].y);
+		minZ = std::min(minZ, gVerticesBunny[i].z);
+		maxZ = std::max(maxZ, gVerticesBunny[i].z);
 	}
 
 	std::cout << "minX = " << minX << std::endl;
@@ -397,24 +400,24 @@ void initVBO()
 	std::cout << "minZ = " << minZ << std::endl;
 	std::cout << "maxZ = " << maxZ << std::endl;
 
-	for (int i = 0; i < gNormals.size(); ++i)
+	for (int i = 0; i < gNormalsBunny.size(); ++i)
 	{
-		normalData[3 * i] = gNormals[i].x;
-		normalData[3 * i + 1] = gNormals[i].y;
-		normalData[3 * i + 2] = gNormals[i].z;
+		normalData[3 * i] = gNormalsBunny[i].x;
+		normalData[3 * i + 1] = gNormalsBunny[i].y;
+		normalData[3 * i + 2] = gNormalsBunny[i].z;
 	}
 
-	for (int i = 0; i < gFaces.size(); ++i)
+	for (int i = 0; i < gFacesBunny.size(); ++i)
 	{
-		indexData[3 * i] = gFaces[i].vIndex[0];
-		indexData[3 * i + 1] = gFaces[i].vIndex[1];
-		indexData[3 * i + 2] = gFaces[i].vIndex[2];
+		indexData[3 * i] = gFacesBunny[i].vIndex[0];
+		indexData[3 * i + 1] = gFacesBunny[i].vIndex[1];
+		indexData[3 * i + 2] = gFacesBunny[i].vIndex[2];
 	}
 
-
-	glBufferData(GL_ARRAY_BUFFER, gVertexDataSizeInBytes + gNormalDataSizeInBytes, 0, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, gVertexDataSizeInBytes, vertexData);
-	glBufferSubData(GL_ARRAY_BUFFER, gVertexDataSizeInBytes, gNormalDataSizeInBytes, normalData);
+    // we ask GPU to allocate memory for us and copy our data into this memory
+	glBufferData(GL_ARRAY_BUFFER, gVertexDataSizeInBytesBunny + gNormalDataSizeInBytesBunny, 0, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, gVertexDataSizeInBytesBunny, vertexData);
+	glBufferSubData(GL_ARRAY_BUFFER, gVertexDataSizeInBytesBunny, gNormalDataSizeInBytesBunny, normalData);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexDataSizeInBytes, indexData, GL_STATIC_DRAW);
 
 	// done copying to GPU memory; can free now from CPU memory
@@ -422,8 +425,10 @@ void initVBO()
 	delete[] normalData;
 	delete[] indexData;
 
+    // we can specify an offset into our buffers
+    // (size, type, stride, pointer)
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(gVertexDataSizeInBytes));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(gVertexDataSizeInBytesBunny));
 }
 
 void init()
@@ -438,13 +443,13 @@ void init()
 
 void drawModel()
 {
-	//glBindBuffer(GL_ARRAY_BUFFER, gVertexAttribBuffer);
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gIndexBuffer);
+	//glBindBuffer(GL_ARRAY_BUFFER, gVertexAttribBufferBunny);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gIndexBufferBunny);
 
 	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(gVertexDataSizeInBytes));
+	//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(gVertexDataSizeInBytesBunny));
 
-	glDrawElements(GL_TRIANGLES, gFaces.size() * 3, GL_UNSIGNED_INT, 0);
+	glDrawElements(GL_TRIANGLES, gFacesBunny.size() * 3, GL_UNSIGNED_INT, 0);
 }
 
 void display()
@@ -458,7 +463,13 @@ void display()
 
 	float angleRad = (float)(angle / 180.0) * M_PI;
 
-	// Compute the modeling matrix 
+    /* Transformations keep effecting the current matrix
+    If you want to draw an object at the same position at each
+    frame you need to reset the matrix to identity: */
+
+    // glLoadIdentity(); this is deprecated?
+	
+    // Compute the modeling matrix 
 	glm::mat4 matT = glm::translate(glm::mat4(1.0), glm::vec3(0.f, 0.f, -3.f));
 	glm::mat4 matS = glm::scale(glm::mat4(1.0), glm::vec3(0.5, 0.5, 0.5));
 	glm::mat4 matR = glm::rotate<float>(glm::mat4(1.0), (-180. / 180.) * M_PI, glm::vec3(0.0, 1.0, 0.0));
@@ -495,7 +506,7 @@ void reshape(GLFWwindow* window, int w, int h)
 
 	// Use perspective projection
 	float fovyRad = (float)(90.0 / 180.0) * M_PI;
-	projectionMatrix = glm::perspective(fovyRad, w / (float)h, 1.0f, 100.0f);
+	projectionMatrix = glm::perspective(fovyRad, w / (float)h, 1.0f, 100.0f); // (fovy, aspect, near, far)
 
 	// Assume default camera position and orientation (camera is at
 	// (0, 0, 0) with looking at -z direction and its up vector pointing
