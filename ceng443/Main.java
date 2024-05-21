@@ -4,10 +4,17 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 class Purchase {
     String customerName;
@@ -95,9 +102,52 @@ public class Main {
                 // total quantity of products purchased by customer whose names start with 'A'
                 System.out.println(prc
                 .stream()
-                .filter(s -> s.customerName.startsWith("A"))
-                .mapToInt(s->s.totalQuantity)
+                .filter(p -> p.customerName.startsWith("A"))
+                .flatMapToInt(p -> IntStream.of(p.breadQuantity, p.milkQuantity, p.eggQuantity, p.potatoQuantity, p.tomatoQuantity))
                 .sum());
+                break;
+            case 2:
+                // price of the most expensive product sold
+                System.out.println(prc
+                .stream()
+                .flatMap(p -> Stream.of(p.breadPrice, p.milkPrice, p.eggPrice, p.potatoPrice, p.tomatoPrice))
+                .max(Comparator.naturalOrder())
+                .orElse(0.0f));
+                break;
+            case 3:
+                // date of the highest paid purchase by a customer
+                System.out.println(prc
+                .stream()
+                .max(Comparator.comparing(p -> p.breadPrice + p.milkPrice + p.eggPrice + p.potatoPrice + p.tomatoPrice))
+                .map(p -> p.purchaseDate)
+                .orElse("No purchases found"));
+                break;
+            case 4:
+                // most popular product before 2000 in terms of total number of purchases
+                Map<String, Integer> productQuantities = prc.stream()
+                    .filter(p -> Integer.parseInt(p.purchaseDate.substring(0, 4)) < 2000)
+                    .collect(Collectors.toMap(
+                        p -> "bread", p -> p.breadQuantity, Integer::sum,
+                        () -> new HashMap<String, Integer>() {{
+                            put("bread", 0);
+                            put("milk", 0);
+                            put("egg", 0);
+                            put("potato", 0);
+                            put("tomato", 0);
+                        }}
+                    ));
+                
+                productQuantities.merge("milk", prc.stream().filter(p -> Integer.parseInt(p.purchaseDate.substring(0, 4)) < 2000).mapToInt(p -> p.milkQuantity).sum(), Integer::sum);
+                productQuantities.merge("egg", prc.stream().filter(p -> Integer.parseInt(p.purchaseDate.substring(0, 4)) < 2000).mapToInt(p -> p.eggQuantity).sum(), Integer::sum);
+                productQuantities.merge("potato", prc.stream().filter(p -> Integer.parseInt(p.purchaseDate.substring(0, 4)) < 2000).mapToInt(p -> p.potatoQuantity).sum(), Integer::sum);
+                productQuantities.merge("tomato", prc.stream().filter(p -> Integer.parseInt(p.purchaseDate.substring(0, 4)) < 2000).mapToInt(p -> p.tomatoQuantity).sum(), Integer::sum);
+
+                String mostPopularProduct = productQuantities.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse("No purchases found");
+
+                System.out.println(mostPopularProduct);
                 break;
             default:
                 break;
