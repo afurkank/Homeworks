@@ -3,3 +3,4 @@
 *.tar.gz
 Ceng477/HW1/code_template/*.png
 *.pth
+*DS_store
