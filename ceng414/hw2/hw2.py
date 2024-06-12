@@ -17,7 +17,7 @@ def knn(
     train_labels = existing_data['label'].to_numpy()
     train_values = existing_data.drop(columns=['label']).to_numpy()
     
-    test_values = test_data.drop(columns=['label']).to_numpy()
+    test_values = test_data.to_numpy() # test_data.drop(columns=['label']).to_numpy()
     
     predicted_labels = []
 
@@ -31,7 +31,8 @@ def knn(
             distances = np.max(np.abs(test_item - train_values), axis=1)
 
         # distance threshold
-        distances[distances > distance_threshold] = np.inf
+        if distance_threshold is not None:
+            distances[distances > distance_threshold] = np.inf
 
         sorted_indices = np.argsort(distances)
         truncated_indices = sorted_indices[:k]
@@ -105,16 +106,12 @@ def fill_missing_features(
             # select the group corresponding to the test sample's label
             group = group_0 if test_label == 0 else group_1
 
-
-            #group_s = group[0]
-
-            #print(f"group_s:\n{group_s}")
-            #print(f"distance:{calculate_distance(test_value, group_s)}")
             # calculate distances to all samples in the selected group
             distances = np.array([calculate_distance(test_value, group_sample) for group_sample in group])
             #print(f"distances before threshold:\n{distances}")
             # apply distance threshold
-            distances[distances > distance_threshold] = np.inf
+            if distance_threshold is not None:
+                distances[distances > distance_threshold] = np.inf
             #print(f"distances after threshold:\n{distances}")
             # get the indices of the k nearest data points
             nearest_indices = np.argsort(distances)[:k]

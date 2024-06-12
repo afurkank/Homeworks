@@ -1,4 +1,3 @@
-package threads;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
@@ -96,8 +95,8 @@ public class ConsumerProducer {
     } 
     finally {
       lock.unlock(); // Release the lock
-      return value;
     }
+    return value;
   }
   }
 }

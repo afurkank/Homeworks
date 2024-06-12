@@ -1,4 +1,3 @@
-package threads;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 

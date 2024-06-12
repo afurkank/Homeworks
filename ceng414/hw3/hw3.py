@@ -1,13 +1,3 @@
-def calculate_distance(p1, p2):
-
-    (x1, y1) = p1[0], p1[1]
-
-    (x2, y2) = p2[0], p2[1]
-    
-    dist = ( ( x1 - x2 ) **2 +  ( y1 - y2 ) **2 ) ** 0.5
-
-    return dist
-
 cluster_samples = {'a': [(0.17, 0.39, 0.53, 0.3, 0.39),
        (0.34, 0.33, 0.38, 0.35, 0.44),
        (0.65, 0.47, 0.59, 0.3, 0.4),
@@ -28,81 +18,40 @@ cluster_samples = {'a': [(0.17, 0.39, 0.53, 0.3, 0.39),
        (0.63, 1.0, 0.35, 0.51, 0.49),
        (0.74, 0.74, 0.31, 0.53, 0.52),
        (0.66, 0.71, 0.41, 0.5, 0.35)]}
-strategy='average'
 
-cluster_distances = {}
+from typing import Dict, List, Tuple
+import itertools
+import math
 
-for i, cluster_name in enumerate(cluster_samples):
+def calculate_distance(point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
+    return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
 
-    inner_cluster_distances = {}
+def single_linkage(cluster_a: List[Tuple[float, float]], cluster_b: List[Tuple[float, float]]) -> float:
+    return min(calculate_distance(a, b) for a, b in itertools.product(cluster_a, cluster_b))
 
-    cluster_points = cluster_samples[cluster_name]
+def complete_linkage(cluster_a: List[Tuple[float, float]], cluster_b: List[Tuple[float, float]]) -> float:
+    return max(calculate_distance(a, b) for a, b in itertools.product(cluster_a, cluster_b))
 
-    num_points = len(cluster_points)
+def average_linkage(cluster_a: List[Tuple[float, float]], cluster_b: List[Tuple[float, float]]) -> float:
+    distances = [calculate_distance(a, b) for a, b in itertools.product(cluster_a, cluster_b)]
+    return sum(distances) / len(distances)
 
-    for j, other_cluster_name in enumerate(cluster_samples):
-        if i == j:
-            continue
-        
-        other_cluster_points = cluster_samples[other_cluster_name]
+def cluster_distances(clusters: Dict[str, List[Tuple[float, float]]], metric: str) -> Dict[str, Dict[str, float]]:
+    distance_functions = {
+        'single': single_linkage,
+        'average': average_linkage,
+        'complete': complete_linkage
+    }
 
-        other_num_points = len(other_cluster_points)
+    result = {}
 
-        resulting_distance = None
+    for cluster_name_a, cluster_a in clusters.items():
+        result[cluster_name_a] = {}
+        for cluster_name_b, cluster_b in clusters.items():
+            if cluster_name_a != cluster_name_b:
+                distance = distance_functions[metric](cluster_a, cluster_b)
+                result[cluster_name_a][cluster_name_b] = distance
+    print(result)
+    return result
 
-        if strategy == 'single':
-            # min distance between any two points inside the clusters
-
-            min_distance = 999
-
-            for point_tuple in cluster_points:
-                
-                for other_point_tuple in other_cluster_points:
-                    
-                    distance = calculate_distance(point_tuple, other_point_tuple)
-
-                    if distance < min_distance:
-                        min_distance = distance
-
-            resulting_distance = min_distance
-
-        elif strategy == 'complete':
-            # max distance between any two points inside the clusters
-
-            max_distance = -1000
-
-            for point_tuple in cluster_points:
-                
-                for other_point_tuple in other_cluster_points:
-                    
-                    distance = calculate_distance(point_tuple, other_point_tuple)
-
-                    if distance > max_distance:
-                        max_distance = distance
-            
-            resulting_distance = max_distance
-        
-        else: # average
-            # avg distance between data points of first and second clusters
-
-            sum_distance = 0
-
-            num_distances = 0
-
-            for point_tuple in cluster_points:
-                
-                for other_point_tuple in other_cluster_points:
-                    
-                    distance = calculate_distance(point_tuple, other_point_tuple)
-
-                    num_distances += 1
-                    sum_distance += distance
-
-            resulting_distance = sum_distance / num_distances
-        
-        inner_cluster_distances[other_cluster_name] = resulting_distance
-
-    cluster_distances[cluster_name] = inner_cluster_distances
-
-for dict in cluster_distances:
-    print(dict + " : ", cluster_distances[dict])
+cluster_distances(cluster_samples, 'single')

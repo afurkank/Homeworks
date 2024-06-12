@@ -1,4 +1,3 @@
-package threads;
 public class TaskThreadDemo {
   public static void main(String[] args) {
     // Create tasks
@@ -36,7 +35,7 @@ class PrintChar implements Runnable {
    */
   public void run() {
     for (int i = 0; i < times; i++) {
-      System.out.print(charToPrint);
+      System.out.print(charToPrint);  
     }
   }
 }
